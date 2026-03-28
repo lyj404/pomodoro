@@ -27,6 +27,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y gcc gcc-mingw-w64-x86-64 libgl1-mesa-dev xorg-dev libxkbcommon-dev
 
+      - name: Verify cross compilers
+        run: |
+          x86_64-w64-mingw32-gcc --version
+          gcc --version
+
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:

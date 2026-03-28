@@ -1,5 +1,5 @@
-pkgbase = pomodoro-bin
-	pkgdesc = Desktop pomodoro timer built with Go and Fyne
+pkgbase = pomodoro-fyne-bin
+	pkgdesc = Desktop pomodoro timer built with Go and Fyne (prebuilt binary)
 	pkgver = 0.0.1
 	pkgrel = 1
 	url = https://github.com/lyj404/pomodoro
@@ -23,4 +23,4 @@ pkgbase = pomodoro-bin
 	sha256sums = SKIP
 	sha256sums = SKIP
 
-pkgname = pomodoro-bin
+pkgname = pomodoro-fyne-bin

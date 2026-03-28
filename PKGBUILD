@@ -1,7 +1,7 @@
-pkgname=pomodoro-bin
+pkgname=pomodoro-fyne-bin
 pkgver=0.0.1
 pkgrel=1
-pkgdesc="Desktop pomodoro timer built with Go and Fyne"
+pkgdesc="Desktop pomodoro timer built with Go and Fyne (prebuilt binary)"
 arch=('x86_64')
 url="https://github.com/lyj404/pomodoro"
 license=('MIT')

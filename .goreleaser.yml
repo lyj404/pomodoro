@@ -12,7 +12,7 @@ builds:
     binary: pomodoro
     env:
       - CGO_ENABLED=1
-      - CC=x86_64-w64-mingw64-gcc
+      - CC=x86_64-w64-mingw32-gcc
     goos:
       - windows
     goarch:
