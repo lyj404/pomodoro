@@ -22,12 +22,17 @@ jobs:
         with:
           go-version: 1.25.x
 
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc gcc-mingw-w64-x86-64 libgl1-mesa-dev xorg-dev libxkbcommon-dev
+
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           # 以下是传递给 Goreleaser 的参数
           distribution: goreleaser
-          version: latest # 使用最新版本的 Goreleaser
+          version: "~> v2" # 显式使用 GoReleaser v2 主版本
           args: release --clean # 运行 release 命令，生成发布文件并推送到 GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Goreleaser 需要这个token来创建Release

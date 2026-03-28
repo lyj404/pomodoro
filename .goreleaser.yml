@@ -7,31 +7,42 @@ before:
     - go mod tidy
 
 builds:
-  - id: pomodoro
+  - id: pomodoro-windows
     main: ./cmd/pomodoro/main.go
     binary: pomodoro
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
+      - CC=x86_64-w64-mingw64-gcc
     goos:
       - windows
-      - linux
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w
       - -H=windowsgui
+  - id: pomodoro-linux-amd64
+    main: ./cmd/pomodoro/main.go
+    binary: pomodoro
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+    goarch:
+      - amd64
+    ldflags:
+      - -s -w
 
 archives:
   - id: binaries
-    builds:
-      - pomodoro
+    ids:
+      - pomodoro-windows
+      - pomodoro-linux-amd64
     name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
       - goos: linux
-        format: tar.gz
+        formats: [tar.gz]
     files:
       - app-icon.png
 
@@ -45,8 +56,8 @@ nfpms:
     formats:
       - deb
       - rpm
-    builds:
-      - pomodoro
+    ids:
+      - pomodoro-linux-amd64
     bindir: /usr/bin
     contents:
       - src: ./app-icon.png

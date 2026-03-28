@@ -1,0 +1,74 @@
+name: Publish to AUR
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  publish-aur:
+    name: Publish AUR package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name }}
+
+      - name: Extract version
+        id: version
+        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+
+      - name: Wait for Linux release asset
+        run: |
+          url="https://github.com/lyj404/pomodoro/releases/download/${{ github.event.release.tag_name }}/pomodoro-${{ steps.version.outputs.version }}-linux-amd64.tar.gz"
+          for _ in $(seq 1 18); do
+            if curl -fsI -L "$url" >/dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Release asset is not available: $url" >&2
+          exit 1
+
+      - name: Update PKGBUILD version
+        run: |
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.version.outputs.version }}/" PKGBUILD
+          sed -i "s/^pkgrel=.*/pkgrel=1/" PKGBUILD
+
+      - name: Refresh checksums and .SRCINFO
+        run: |
+          docker run --rm \
+            -v "$PWD:/work" \
+            -w /tmp \
+            archlinux:base-devel \
+            bash -lc '
+              pacman -Sy --noconfirm --needed pacman-contrib sudo
+              useradd -m builder
+              cp -a /work pkg
+              chown -R builder:builder /tmp/pkg
+              sudo -u builder bash -lc "
+                cd /tmp/pkg
+                updpkgsums
+                makepkg --printsrcinfo > .SRCINFO
+              "
+              cp /tmp/pkg/PKGBUILD /work/PKGBUILD
+              cp /tmp/pkg/.SRCINFO /work/.SRCINFO
+              chmod 0644 /work/PKGBUILD /work/.SRCINFO
+            '
+
+      - name: Publish AUR package
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.1
+        with:
+          pkgname: pomodoro-bin
+          pkgbuild: ./PKGBUILD
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update pomodoro-bin to ${{ steps.version.outputs.version }}"
+          ssh_keyscan_types: rsa,ecdsa,ed25519
