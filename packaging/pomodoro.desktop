@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Pomodoro
+Comment=Desktop pomodoro timer built with Go and Fyne
+Exec=/usr/bin/pomodoro
+Icon=pomodoro
+Terminal=false
+Categories=Utility;Office;

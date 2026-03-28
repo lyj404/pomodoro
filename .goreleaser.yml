@@ -1,0 +1,59 @@
+version: 2
+
+project_name: pomodoro
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: pomodoro
+    main: ./cmd/pomodoro/main.go
+    binary: pomodoro
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -H=windowsgui
+
+archives:
+  - id: binaries
+    builds:
+      - pomodoro
+    name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        format: zip
+      - goos: linux
+        format: tar.gz
+    files:
+      - app-icon.png
+
+nfpms:
+  - id: linux-packages
+    package_name: pomodoro
+    file_name_template: "{{ .ProjectName }}-{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    vendor: pomodoro
+    description: Desktop pomodoro timer built with Go and Fyne.
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    builds:
+      - pomodoro
+    bindir: /usr/bin
+    contents:
+      - src: ./app-icon.png
+        dst: /usr/share/icons/hicolor/256x256/apps/pomodoro.png
+      - src: ./packaging/pomodoro.desktop
+        dst: /usr/share/applications/pomodoro.desktop
+
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Version }}-SHA256SUMS.txt"
+  algorithm: sha256
