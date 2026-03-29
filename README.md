@@ -2,6 +2,8 @@
 
 一个使用 Go + Fyne 开发的桌面番茄钟应用，支持本地 SQLite 数据存储。
 
+![效果图](/img/img.png)
+
 ## 功能
 
 - 番茄钟倒计时
@@ -27,7 +29,12 @@ go run ./cmd/pomodoro/main.go
 ## 构建
 
 ```bash
+# 直接指定路径编译
 go build -o pomodoro ./cmd/pomodoro/main.go
+# 使用make
+make build
+# 同时编译Windows和Linux
+make build-all
 ```
 
 ## 数据存储

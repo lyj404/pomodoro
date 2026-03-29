@@ -34,3 +34,6 @@ go.work.sum
 # Agent instructions
 AGENTS.md
 RTK.md
+
+# bin file
+/bin/
