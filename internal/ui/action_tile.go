@@ -12,12 +12,12 @@ import (
 
 type ActionTile struct {
 	widget.BaseWidget
-	label      string
-	icon       fyne.Resource
-	bgColor    color.Color
-	textColor  color.Color
-	tapped     func()
-	disabled   bool
+	label     string
+	icon      fyne.Resource
+	bgColor   color.Color
+	textColor color.Color
+	tapped    func()
+	disabled  bool
 }
 
 func NewActionTile(label string, icon fyne.Resource, bgColor color.Color, textColor color.Color, tapped func()) *ActionTile {
@@ -68,10 +68,10 @@ func (t *ActionTile) CreateRenderer() fyne.WidgetRenderer {
 
 	root := container.NewStack(bg, container.NewPadded(body))
 	return &actionTileRenderer{
-		tile:   t,
-		bg:     bg,
-		icon:   icon,
-		label:  label,
+		tile:    t,
+		bg:      bg,
+		icon:    icon,
+		label:   label,
 		objects: []fyne.CanvasObject{root},
 	}
 }
@@ -89,7 +89,7 @@ func (r *actionTileRenderer) Layout(size fyne.Size) {
 }
 
 func (r *actionTileRenderer) MinSize() fyne.Size {
-	return fyne.NewSize(148, 52)
+	return fyne.NewSize(148, 46)
 }
 
 func (r *actionTileRenderer) Refresh() {

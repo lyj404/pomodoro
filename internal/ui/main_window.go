@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
+	"fyne.io/fyne/v2/widget"
 
 	"github.com/lyj404/pomodoro/internal/model"
 	"github.com/lyj404/pomodoro/internal/storage"
@@ -32,12 +33,23 @@ type MainView struct {
 	pauseBtn           *ActionTile
 	resetBtn           *ActionTile
 	skipBtn            *ActionTile
-	settingsBtn        *ActionTile
-	historyBtn         *ActionTile
+	settingsBtn        *widget.Button
+	historyBtn         *widget.Button
 	rootContent        *fyne.Container
 	scroll             *container.Scroll
+	layoutTier         layoutTier
 	callbacks          MainCallbacks
 }
+
+type layoutTier int
+
+const (
+	layoutTierUnknown layoutTier = iota
+	layoutTierTiny
+	layoutTierCompact
+	layoutTierMedium
+	layoutTierLarge
+)
 
 type MainCallbacks struct {
 	OnStart        func()
@@ -61,6 +73,7 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 		focusCountValue:    canvas.NewText("0", nordText),
 		focusDurationValue: canvas.NewText("00:00", nordText),
 		streakValue:        canvas.NewText("0", nordText),
+		layoutTier:         layoutTierUnknown,
 		callbacks:          callbacks,
 	}
 
@@ -94,24 +107,30 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 	view.pauseBtn = NewActionTile("暂停", theme.MediaPauseIcon(), pauseButtonColor, pauseButtonTextColor, callbacks.OnPause)
 	view.resetBtn = NewActionTile("重置", theme.ViewRefreshIcon(), secondaryButtonColor, secondaryTextColor, callbacks.OnReset)
 	view.skipBtn = NewActionTile("跳过", theme.MediaSkipNextIcon(), secondaryButtonColor, secondaryTextColor, callbacks.OnSkip)
-	view.settingsBtn = NewActionTile("设置", theme.SettingsIcon(), secondaryButtonColor, secondaryTextColor, callbacks.OnOpenSettings)
-	view.historyBtn = NewActionTile("记录", theme.HistoryIcon(), secondaryButtonColor, secondaryTextColor, callbacks.OnOpenHistory)
+	view.settingsBtn = widget.NewButtonWithIcon("", theme.SettingsIcon(), callbacks.OnOpenSettings)
+	view.settingsBtn.Importance = widget.LowImportance
+	view.historyBtn = widget.NewButtonWithIcon("", theme.HistoryIcon(), callbacks.OnOpenHistory)
+	view.historyBtn.Importance = widget.LowImportance
 
 	view.rootContent = container.NewVBox()
-	view.scroll = container.NewVScroll(view.rootContent)
+	view.scroll = container.NewVScroll(container.NewPadded(view.rootContent))
+
+	toolbar := container.NewHBox(
+		layout.NewSpacer(),
+		view.settingsBtn,
+		view.historyBtn,
+	)
 
 	win.SetContent(container.NewStack(
 		view.background,
-		container.NewBorder(view.accentBar, nil, nil, nil, container.NewPadded(view.scroll)),
+		container.NewBorder(toolbar, nil, nil, nil, container.NewBorder(view.accentBar, nil, nil, nil, view.scroll)),
 	))
 
-	view.rebuildLayout(win.Canvas().Size().Width)
+	view.ensureLayout(win.Canvas().Size().Width)
 	view.startBtn.Refresh()
 	view.pauseBtn.Refresh()
 	view.resetBtn.Refresh()
 	view.skipBtn.Refresh()
-	view.settingsBtn.Refresh()
-	view.historyBtn.Refresh()
 	return view
 }
 
@@ -149,16 +168,20 @@ func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
 		v.pauseBtn.SetDisabled(true)
 	}
 
-	v.rebuildLayout(v.window.Canvas().Size().Width)
+	v.ensureLayout(v.window.Canvas().Size().Width)
 	v.startBtn.Refresh()
 	v.pauseBtn.Refresh()
 	v.resetBtn.Refresh()
 	v.skipBtn.Refresh()
-	v.settingsBtn.Refresh()
-	v.historyBtn.Refresh()
 }
 
-func (v *MainView) rebuildLayout(width float32) {
+func (v *MainView) ensureLayout(width float32) {
+	nextTier := layoutTierForWidth(width)
+	if nextTier == v.layoutTier {
+		return
+	}
+	v.layoutTier = nextTier
+
 	timerInner := container.NewVBox(
 		layout.NewSpacer(),
 		v.modeLabel,
@@ -181,26 +204,32 @@ func (v *MainView) rebuildLayout(width float32) {
 
 	var primaryActions fyne.CanvasObject
 	var secondaryActions fyne.CanvasObject
-	var toolbar fyne.CanvasObject
 	var stats fyne.CanvasObject
 
-	if width >= 560 {
+	switch nextTier {
+	case layoutTierLarge:
 		primaryActions = container.NewGridWithColumns(2, v.startBtn, v.pauseBtn)
 		secondaryActions = actionGroup(v.resetBtn, v.skipBtn)
-		toolbar = actionGroup(v.settingsBtn, v.historyBtn)
 		stats = container.NewGridWithColumns(3, statsCards...)
-	} else if width >= 440 {
+	case layoutTierMedium:
 		primaryActions = container.NewGridWithColumns(2, v.startBtn, v.pauseBtn)
 		secondaryActions = actionGroup(v.resetBtn, v.skipBtn)
-		toolbar = actionGroup(v.settingsBtn, v.historyBtn)
 		stats = container.NewGridWithColumns(2,
 			container.NewVBox(statsCards[0], verticalGap(4), statsCards[1]),
 			statsCards[2],
 		)
-	} else {
+	case layoutTierCompact:
+		primaryActions = container.NewGridWithColumns(2, v.startBtn, v.pauseBtn)
+		secondaryActions = actionGroup(v.resetBtn, v.skipBtn)
+		stats = container.NewGridWithColumns(2,
+			statsCards[0],
+			statsCards[1],
+			statsCards[2],
+			verticalGap(1),
+		)
+	default:
 		primaryActions = container.NewVBox(v.startBtn, verticalGap(4), v.pauseBtn)
 		secondaryActions = actionGroupVertical(v.resetBtn, v.skipBtn)
-		toolbar = actionGroupVertical(v.settingsBtn, v.historyBtn)
 		stats = container.NewVBox(
 			statsCards[0],
 			verticalGap(4),
@@ -219,10 +248,21 @@ func (v *MainView) rebuildLayout(width float32) {
 		secondaryActions,
 		verticalGap(3),
 		stats,
-		verticalGap(3),
-		toolbar,
 	}
 	v.rootContent.Refresh()
+}
+
+func layoutTierForWidth(width float32) layoutTier {
+	switch {
+	case width >= 620:
+		return layoutTierLarge
+	case width >= 460:
+		return layoutTierMedium
+	case width >= 360:
+		return layoutTierCompact
+	default:
+		return layoutTierTiny
+	}
 }
 
 func (v *MainView) ShowPhaseFinished(snapshot timer.Snapshot) {

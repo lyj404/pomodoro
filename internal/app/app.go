@@ -45,13 +45,29 @@ func Run() error {
 	fyneApp.SetIcon(ui.AppIcon())
 	win := fyneApp.NewWindow("Pomodoro")
 	win.SetIcon(ui.AppIcon())
-	win.Resize(fyne.NewSize(400, 680))
+	win.Resize(fyne.NewSize(420, 760))
 
 	timerManager := timer.NewManager(settings)
 	pomodoroService := service.NewPomodoroService(timerManager, settingsRepo, sessionRepo)
 	statsService := service.NewStatsService(sessionRepo)
+	currentStats, err := statsService.TodayStats()
+	if err != nil {
+		return err
+	}
 
 	var view *ui.MainView
+	renderSnapshot := func() {
+		view.Render(timerManager.Snapshot(), currentStats)
+	}
+	reloadStatsAndRender := func() {
+		stats, statsErr := statsService.TodayStats()
+		if statsErr != nil {
+			view.ShowError(statsErr)
+			return
+		}
+		currentStats = stats
+		renderSnapshot()
+	}
 	view = ui.NewMainView(win, ui.MainCallbacks{
 		OnStart: pomodoroService.Start,
 		OnPause: pomodoroService.Pause,
@@ -60,14 +76,14 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			refresh(view, timerManager, statsService)
+			reloadStatsAndRender()
 		},
 		OnSkip: func() {
 			if err := pomodoroService.Skip(); err != nil {
 				view.ShowError(err)
 				return
 			}
-			refresh(view, timerManager, statsService)
+			reloadStatsAndRender()
 		},
 		OnOpenSettings: func() {
 			current, err := settingsRepo.Load()
@@ -80,7 +96,7 @@ func Run() error {
 					view.ShowError(err)
 					return
 				}
-				refresh(view, timerManager, statsService)
+				renderSnapshot()
 			})
 		},
 		OnOpenHistory: func() {
@@ -94,12 +110,12 @@ func Run() error {
 				return
 			}
 			ui.ShowHistoryDialog(win, sessions, statsService.DeleteSessions, loadSessions, func() {
-				refresh(view, timerManager, statsService)
+				reloadStatsAndRender()
 			})
 		},
 	})
 
-	refresh(view, timerManager, statsService)
+	renderSnapshot()
 
 	go func() {
 		for event := range timerManager.Events() {
@@ -115,21 +131,14 @@ func Run() error {
 					content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
 					fyneApp.SendNotification(fyne.NewNotification(title, content))
 					view.ShowPhaseFinished(event.Snapshot)
+					reloadStatsAndRender()
+					return
 				}
-				refresh(view, timerManager, statsService)
+				renderSnapshot()
 			})
 		}
 	}()
 
 	win.ShowAndRun()
 	return nil
-}
-
-func refresh(view *ui.MainView, timerManager *timer.Manager, statsService *service.StatsService) {
-	stats, err := statsService.TodayStats()
-	if err != nil {
-		view.ShowError(err)
-		return
-	}
-	view.Render(timerManager.Snapshot(), stats)
 }
