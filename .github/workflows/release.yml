@@ -9,13 +9,13 @@ jobs:
   build-release:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # 需要写入权限来创建 GitHub Release
+      contents: write
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 需要完整的git历史来生成Changelog
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -35,9 +35,84 @@ jobs:
       - name: Run Goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
-          # 以下是传递给 Goreleaser 的参数
           distribution: goreleaser
-          version: "~> v2" # 显式使用 GoReleaser v2 主版本
-          args: release --clean # 运行 release 命令，生成发布文件并推送到 GitHub Release
+          version: "~> v2"
+          args: release --clean
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Goreleaser 需要这个token来创建Release
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update PKGBUILD version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+
+      - name: Update .SRCINFO version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/pkgver = .*/pkgver = ${VERSION}/" .SRCINFO
+          sed -i "s/v[0-9.]*\//v${VERSION}\//g" .SRCINFO
+          sed -i "s/-[0-9.]*-linux/-${VERSION}-linux/g" .SRCINFO
+
+      - name: Publish to AUR
+        env:
+          AUR_PKGNAME: pomodoro-fyne-bin
+          AUR_USERNAME: ${{ secrets.AUR_USERNAME }}
+          AUR_EMAIL: ${{ secrets.AUR_EMAIL }}
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          WORKSPACE_DIR="$PWD"
+
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          ssh-keyscan -t ed25519 aur.archlinux.org >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
+
+          rm -rf /tmp/local-repo
+          echo "=> 尝试通过 HTTPS 克隆现有的 AUR 仓库..."
+
+          if git clone "https://aur.archlinux.org/${AUR_PKGNAME}.git" /tmp/local-repo; then
+            cd /tmp/local-repo
+            git remote set-url origin "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git"
+          else
+            echo "=> HTTPS 克隆失败，初始化全新仓库..."
+            mkdir -p /tmp/local-repo
+            cd /tmp/local-repo
+            git init -b master
+            git remote add origin "ssh://aur@aur.archlinux.org/${AUR_PKGNAME}.git"
+          fi
+
+          cp "$WORKSPACE_DIR/PKGBUILD" "$WORKSPACE_DIR/.SRCINFO" .
+
+          git config user.name "$AUR_USERNAME"
+          git config user.email "$AUR_EMAIL"
+
+          git add PKGBUILD .SRCINFO
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "=> 没有任何文件发生变更，跳过发布."
+            exit 0
+          fi
+
+          git commit -m "Update ${AUR_PKGNAME} to ${{ steps.version.outputs.version }}"
+
+          echo "=> 开始推送到 AUR..."
+          for i in $(seq 1 5); do
+            if git push -u origin master; then
+              echo "=> 成功推送到 AUR 仓库！"
+              exit 0
+            fi
+            echo "=> 推送失败，等待 10 秒后重试 ($i/5)..."
+            sleep 10
+          done
+
+          echo "=> 重试 5 次后依然无法推送到 AUR。" >&2
+          exit 1
