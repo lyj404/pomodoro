@@ -40,14 +40,29 @@ func ShowHistoryDialog(
 	currentOffset := 0
 	total := totalCount
 	windowSize := win.Canvas().Size()
-	dialogWidth := clampFloat32(windowSize.Width-40, 380, 560)
-	dialogHeight := clampFloat32(windowSize.Height-40, 380, 520)
-	contentWidth := clampFloat32(dialogWidth-40, 340, 520)
-	scrollWidth := clampFloat32(dialogWidth-100, 280, 460)
-	scrollHeight := clampFloat32(dialogHeight-280, 160, 280)
-	compactRows := dialogWidth < 500
 
-	selectedCount := canvas.NewText("当前筛选已选 0 条", nordText)
+	dialogWidth := windowSize.Width * 0.8
+	if dialogWidth < 400 {
+		dialogWidth = 400
+	}
+	if dialogWidth > 700 {
+		dialogWidth = 700
+	}
+
+	dialogHeight := windowSize.Height * 0.8
+	if dialogHeight < 350 {
+		dialogHeight = 350
+	}
+	if dialogHeight > 600 {
+		dialogHeight = 600
+	}
+
+	contentWidth := dialogWidth - 40
+	scrollWidth := dialogWidth - 60
+	scrollHeight := dialogHeight - 100
+	compactRows := dialogWidth < 480
+
+	selectedCount := canvas.NewText("已选: 0 条", nordText)
 	selectedCount.TextSize = 14
 
 	listHost := container.NewMax()
@@ -80,22 +95,10 @@ func ShowHistoryDialog(
 		refreshList(currentSessions)
 	})
 
-	modeFilter := widget.NewSelect(
-		[]string{historyModeAll, historyModeWork, historyModeShort, historyModeLong},
-		nil,
-	)
-	modeFilter.SetSelected(historyModeAll)
-
-	statusFilter := widget.NewSelect(
-		[]string{historyStatusAll, historyStatusCompleted, historyStatusIncomplete},
-		nil,
-	)
-	statusFilter.SetSelected(historyStatusAll)
-
 	refreshList = func(current []model.Session) {
 		currentSessions = current
 		selectedInView := selectedIDsInSessions(selected, current)
-		selectedCount.Text = fmt.Sprintf("当前筛选已选 %d 条", len(selectedInView))
+		selectedCount.Text = fmt.Sprintf("已选: %d 条", len(selectedInView))
 		selectedCount.Refresh()
 		allSelected := len(current) > 0 && len(selectedInView) == len(current)
 		syncingSelectAll = true
@@ -107,7 +110,7 @@ func ShowHistoryDialog(
 		if totalPages == 0 {
 			totalPages = 1
 		}
-		pageInfo.Text = fmt.Sprintf("第 %d/%d 页 (共 %d 条)", currentPage, totalPages, total)
+		pageInfo.Text = fmt.Sprintf("%d/%d (共 %d 条)", currentPage, totalPages, total)
 		pageInfo.Refresh()
 
 		if currentOffset == 0 {
@@ -123,7 +126,7 @@ func ShowHistoryDialog(
 
 		listHost.Objects = []fyne.CanvasObject{buildHistoryBody(current, selected, compactRows, func() {
 			selectedInView := selectedIDsInSessions(selected, current)
-			selectedCount.Text = fmt.Sprintf("当前筛选已选 %d 条", len(selectedInView))
+			selectedCount.Text = fmt.Sprintf("已选: %d 条", len(selectedInView))
 			selectedCount.Refresh()
 			allSelected := len(current) > 0 && len(selectedInView) == len(current)
 			syncingSelectAll = true
@@ -143,13 +146,6 @@ func ShowHistoryDialog(
 			return
 		}
 		refreshList(sessions)
-	}
-
-	modeFilter.OnChanged = func(string) {
-		loadPage(0)
-	}
-	statusFilter.OnChanged = func(string) {
-		loadPage(0)
 	}
 
 	prevBtn.OnTapped = func() {
@@ -189,32 +185,24 @@ func ShowHistoryDialog(
 		}, win).Show()
 	})
 
-	modeFilterWrap := labeledFilter("模式筛选", modeFilter)
-	statusFilterWrap := labeledFilter("完成状态", statusFilter)
-	var filterControls fyne.CanvasObject
-	var actionControls fyne.CanvasObject
-	if dialogWidth >= 460 {
-		filterControls = container.NewGridWithColumns(2, modeFilterWrap, statusFilterWrap)
-		actionControls = container.NewGridWithColumns(2, selectAllCheck, deleteSelectedBtn)
-	} else {
-		filterControls = container.NewVBox(modeFilterWrap, verticalGap(2), statusFilterWrap)
-		actionControls = container.NewVBox(selectAllCheck, verticalGap(2), deleteSelectedBtn)
-	}
-
-	paginationControls := container.NewHBox(
+	paginationRow := container.NewHBox(
 		prevBtn,
 		container.NewCenter(pageInfo),
 		nextBtn,
 	)
 
-	toolbar := container.NewVBox(
+	actionRow := container.NewHBox(
+		layout.NewSpacer(),
+		selectAllCheck,
+		layout.NewSpacer(),
+		deleteSelectedBtn,
+		layout.NewSpacer(),
+	)
+
+	headerRow := container.NewHBox(
 		selectedCount,
-		verticalGap(4),
-		filterControls,
-		verticalGap(3),
-		actionControls,
-		verticalGap(3),
-		paginationControls,
+		layout.NewSpacer(),
+		paginationRow,
 	)
 
 	refreshList(sessions)
@@ -222,10 +210,18 @@ func ShowHistoryDialog(
 		listHost,
 	))
 	scroll.SetMinSize(fyne.NewSize(scrollWidth, scrollHeight))
+
+	toolbar := container.NewVBox(
+		headerRow,
+		verticalGap(2),
+		actionRow,
+	)
+
 	listCard := formSection(
 		toolbar,
-		verticalGap(4),
+		verticalGap(2),
 		scroll,
+		layout.NewSpacer(),
 	)
 
 	content := container.NewPadded(centeredDialogContent(contentWidth, listCard))
@@ -246,7 +242,10 @@ func buildHistoryBody(
 	}
 
 	items := make([]fyne.CanvasObject, 0, len(sessions))
-	for _, session := range sessions {
+	for i, session := range sessions {
+		if i > 0 {
+			items = append(items, verticalGap(6))
+		}
 		items = append(items, historyRow(session, selected, compact, onSelectionChanged))
 	}
 	return container.NewVBox(items...)
@@ -263,6 +262,8 @@ func historyRow(
 
 	border := canvas.NewRectangle(historyBorderColor(selected[session.ID], session.Mode))
 	border.CornerRadius = 12
+	borderStroke := canvas.NewRectangle(nordBackground)
+	borderStroke.CornerRadius = 12
 
 	modeText := canvas.NewText(localModeLabel(session.Mode), accentColorForMode(session.Mode))
 	modeText.TextSize = 15
@@ -354,9 +355,12 @@ func selectedIDsInSessions(selected map[int64]bool, sessions []model.Session) []
 }
 
 func labeledFilter(label string, filter *widget.Select) fyne.CanvasObject {
-	title := canvas.NewText(label, nordText)
-	title.TextSize = 13
-	return container.NewVBox(title, filter)
+	filter.Resize(fyne.NewSize(100, 30))
+	return container.NewHBox(
+		canvas.NewText(label, nordText),
+		layout.NewSpacer(),
+		filter,
+	)
 }
 
 func filterSessions(sessions []model.Session, modeFilter, statusFilter string) []model.Session {
@@ -422,7 +426,7 @@ func historyBorderColor(selected bool, mode model.SessionMode) color.Color {
 	if selected {
 		return accentColorForMode(mode)
 	}
-	return nordPanelMuted
+	return nordSubtext
 }
 
 func clampFloat32(value, min, max float32) float32 {

@@ -26,6 +26,24 @@ const (
 )
 
 func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(model.Settings)) {
+	windowSize := win.Canvas().Size()
+
+	dialogWidth := windowSize.Width * 0.6
+	if dialogWidth < 320 {
+		dialogWidth = 320
+	}
+	if dialogWidth > 500 {
+		dialogWidth = 500
+	}
+
+	dialogHeight := windowSize.Height * 0.7
+	if dialogHeight < 350 {
+		dialogHeight = 350
+	}
+	if dialogHeight > 550 {
+		dialogHeight = 550
+	}
+
 	workEntry := styledEntry(strconv.Itoa(settings.WorkMinutes), workMinutesMin, workMinutesMax)
 	shortBreakEntry := styledEntry(strconv.Itoa(settings.ShortBreakMinutes), shortBreakMin, shortBreakMax)
 	longBreakEntry := styledEntry(strconv.Itoa(settings.LongBreakMinutes), longBreakMin, longBreakMax)
@@ -46,7 +64,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 		container.NewPadded(soundEnabled),
 	)
 
-	content := container.NewPadded(centeredDialogContent(380, formCard))
+	content := container.NewPadded(centeredDialogContent(dialogWidth-20, formCard))
 
 	confirm := dialog.NewCustomConfirm("设置", "保存", "取消", content, func(ok bool) {
 		if !ok {
@@ -79,7 +97,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 
 		onSave(next)
 	}, win)
-	confirm.Resize(fyne.NewSize(460, 450))
+	confirm.Resize(fyne.NewSize(dialogWidth, dialogHeight))
 	confirm.Show()
 }
 
@@ -90,8 +108,8 @@ func formSection(children ...fyne.CanvasObject) fyne.CanvasObject {
 }
 
 func numberField(label, hint string, entry *widget.Entry, min, max int) fyne.CanvasObject {
-	labelText := canvas.NewText(label, nordSubtext)
-	labelText.TextSize = 13
+	labelText := canvas.NewText(label, nordText)
+	labelText.TextSize = 14
 
 	hintText := canvas.NewText(hint, nordSubtext)
 	hintText.TextSize = 11

@@ -41,17 +41,12 @@ func (s *PomodoroService) Pause() {
 }
 
 func (s *PomodoroService) Reset() error {
-	if err := s.persistCurrentSession(false); err != nil {
-		return err
-	}
 	s.timer.Reset()
+	s.currentPhaseStart = time.Time{}
 	return nil
 }
 
 func (s *PomodoroService) Skip() error {
-	if err := s.persistCurrentSession(false); err != nil {
-		return err
-	}
 	s.timer.Skip()
 	s.currentPhaseStart = time.Time{}
 	return nil

@@ -52,9 +52,17 @@ func mainHeader(titleText string, subtitleText string, trailing fyne.CanvasObjec
 }
 
 func centeredDialogContent(maxWidth float32, children ...fyne.CanvasObject) fyne.CanvasObject {
+	sidePadding := canvas.NewRectangle(colorTransparent())
+	sidePadding.SetMinSize(fyne.NewSize(20, 1))
+
 	column := container.NewVBox(children...)
-	columnWrap := container.NewGridWrap(fyne.NewSize(maxWidth, column.MinSize().Height), column)
-	return container.NewVBox(
-		container.NewHBox(layout.NewSpacer(), columnWrap, layout.NewSpacer()),
-	)
+	innerRow := container.NewHBox(sidePadding, column, sidePadding)
+
+	spacer := layout.NewSpacer()
+	wrapWidth := maxWidth
+	if wrapWidth > 500 {
+		wrapWidth = 500
+	}
+	columnWrap := container.NewGridWrap(fyne.NewSize(wrapWidth, column.MinSize().Height), innerRow)
+	return container.NewHBox(spacer, columnWrap, spacer)
 }

@@ -48,6 +48,7 @@ func Run() error {
 	win := fyneApp.NewWindow("Pomodoro")
 	win.SetIcon(ui.AppIcon())
 	win.Resize(fyne.NewSize(420, 760))
+	win.SetFixedSize(true)
 
 	timerManager := timer.NewManager(settings)
 	pomodoroService := service.NewPomodoroService(timerManager, settingsRepo, sessionRepo)
