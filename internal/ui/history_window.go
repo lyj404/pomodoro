@@ -46,7 +46,7 @@ func ShowHistoryDialog(
 	scrollWidth := contentWidth
 	compactRows := dialogWidth < 480
 
-	selectedCount := canvas.NewText("已选: 0 条", secondaryTextColor)
+	selectedCount := canvas.NewText(Tr("selected")+": 0 "+Tr("items"), secondaryTextColor)
 	selectedCount.TextSize = 14
 
 	listHost := container.NewMax()
@@ -63,7 +63,7 @@ func ShowHistoryDialog(
 	nextBtn := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), nil)
 	nextBtn.Importance = widget.LowImportance
 
-	selectAllCheck := widget.NewCheck("全选", func(checked bool) {
+	selectAllCheck := widget.NewCheck(Tr("select_all"), func(checked bool) {
 		if syncingSelectAll {
 			return
 		}
@@ -115,7 +115,7 @@ func ShowHistoryDialog(
 
 		listHost.Objects = []fyne.CanvasObject{buildHistoryBody(current, selected, compactRows, scrollWidth, func() {
 			selectedInView := selectedIDsInSessions(selected, current)
-			selectedCount.Text = fmt.Sprintf("已选: %d 条", len(selectedInView))
+			selectedCount.Text = fmt.Sprintf("%s: %d %s", Tr("selected"), len(selectedInView), Tr("items"))
 			selectedCount.Refresh()
 			allSelected := len(current) > 0 && len(selectedInView) == len(current)
 			syncingSelectAll = true
@@ -149,14 +149,14 @@ func ShowHistoryDialog(
 		}
 	}
 
-	deleteSelectedBtn := NewActionTile("删除选中", nil, nordDanger, secondaryTextColor, func() {
+	deleteSelectedBtn := NewActionTile(Tr("delete_selected"), nil, nordDanger, secondaryTextColor, func() {
 		ids := selectedIDsInSessions(selected, currentSessions)
 		if len(ids) == 0 {
-			dialog.ShowInformation("提示", "请先选择当前筛选结果中的记录。", win)
+			dialog.ShowInformation(Tr("notice"), Tr("select_records_hint"), win)
 			return
 		}
 
-		dialog.NewConfirm("批量删除", fmt.Sprintf("确认删除选中的 %d 条记录？", len(ids)), func(ok bool) {
+		dialog.NewConfirm(Tr("batch_delete"), fmt.Sprintf(Tr("confirm_delete_hint"), len(ids)), func(ok bool) {
 			if !ok {
 				return
 			}
@@ -203,7 +203,7 @@ func ShowHistoryDialog(
 	)
 	// 最终包装：不再使用强制 360 宽度的 centeredDialogContent
 	content := container.NewPadded(listCard)
-	historyDialog := dialog.NewCustom("历史记录", "关闭", content, win)
+	historyDialog := dialog.NewCustom(Tr("history"), Tr("close"), content, win)
 	historyDialog.Resize(fyne.NewSize(400, 520)) // 稍微增加高度以容纳空状态
 	refreshList(sessions)
 	historyDialog.Show()
@@ -252,9 +252,9 @@ func historyRow(
 	)
 	metaText.TextSize = 13
 
-	plannedText := canvas.NewText(fmt.Sprintf("计划: %s", formatClock(session.PlannedSeconds)), secondaryTextColor)
+	plannedText := canvas.NewText(fmt.Sprintf("%s: %s", Tr("planned"), formatClock(session.PlannedSeconds)), secondaryTextColor)
 	plannedText.TextSize = 13
-	actualText := canvas.NewText(fmt.Sprintf("实际: %s", formatClock(session.ActualSeconds)), secondaryTextColor)
+	actualText := canvas.NewText(fmt.Sprintf("%s: %s", Tr("actual"), formatClock(session.ActualSeconds)), secondaryTextColor)
 	actualText.TextSize = 13
 
 	check := widget.NewCheck("", func(checked bool) {
@@ -302,12 +302,12 @@ func emptyHistoryCard() fyne.CanvasObject {
 	card := canvas.NewRectangle(cardBackgroundColor)
 	card.CornerRadius = 20
 
-	title := canvas.NewText("暂无记录", secondaryTextColor)
+	title := canvas.NewText(Tr("no_records"), secondaryTextColor)
 	title.TextSize = 22
 	title.Alignment = fyne.TextAlignCenter
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText("开始一次专注后，这里会自动出现历史记录。", secondaryTextColor)
+	subtitle := canvas.NewText(Tr("history.empty_hint"), secondaryTextColor)
 	subtitle.TextSize = 14
 	subtitle.Alignment = fyne.TextAlignCenter
 

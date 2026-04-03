@@ -8,6 +8,7 @@ type Settings struct {
 	AutoStartNextPhase bool
 	SoundEnabled       bool
 	Theme              string
+	Language           string
 	WindowWidth        float32
 	WindowHeight       float32
 }
@@ -21,6 +22,7 @@ func DefaultSettings() Settings {
 		AutoStartNextPhase: false,
 		SoundEnabled:       true,
 		Theme:              "dark",
+		Language:           "zh",
 		WindowWidth:        420,
 		WindowHeight:       760,
 	}

@@ -44,6 +44,7 @@ func Run() error {
 
 	fyneApp := app.NewWithID("pomodoro.desktop")
 	ui.ApplyTheme(settings.Theme)
+	ui.SetLang(settings.Language)
 	if settings.Theme == "light" {
 		fyneApp.Settings().SetTheme(ui.NewLightTheme())
 	} else {
@@ -182,6 +183,7 @@ func Run() error {
 					return
 				}
 				ui.ApplyTheme(nextSettings.Theme)
+				ui.SetLang(nextSettings.Language)
 				if nextSettings.Theme == "light" {
 					fyneApp.Settings().SetTheme(ui.NewLightTheme())
 				} else {
@@ -235,6 +237,21 @@ func Run() error {
 				fyneApp.Settings().SetTheme(ui.NewFocusTheme())
 			}
 			view.RefreshColors()
+			renderSnapshot()
+		},
+		OnToggleLang: func(lang string) {
+			current, err := settingsRepo.Load()
+			if err != nil {
+				view.ShowError(err)
+				return
+			}
+			current.Language = lang
+			if err := pomodoroService.UpdateSettings(current); err != nil {
+				view.ShowError(err)
+				return
+			}
+			ui.SetLang(lang)
+			view.RefreshText()
 			renderSnapshot()
 		},
 	})

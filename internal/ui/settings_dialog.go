@@ -27,40 +27,40 @@ const (
 
 func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(model.Settings)) {
 	dialogWidth := float32(400)
-	dialogHeight := float32(460)
+	dialogHeight := float32(500)
 
 	workEntry := styledEntry(strconv.Itoa(settings.WorkMinutes), workMinutesMin, workMinutesMax)
 	shortBreakEntry := styledEntry(strconv.Itoa(settings.ShortBreakMinutes), shortBreakMin, shortBreakMax)
 	longBreakEntry := styledEntry(strconv.Itoa(settings.LongBreakMinutes), longBreakMin, longBreakMax)
 	intervalEntry := styledEntry(strconv.Itoa(settings.LongBreakInterval), breakIntervalMin, breakIntervalMax)
 
-	autoStart := widget.NewCheck("自动开始下一阶段", nil)
+	autoStart := widget.NewCheck(Tr("settings.auto_start"), nil)
 	autoStart.SetChecked(settings.AutoStartNextPhase)
 
-	soundEnabled := widget.NewCheck("开启声音提醒", nil)
+	soundEnabled := widget.NewCheck(Tr("settings.sound"), nil)
 	soundEnabled.SetChecked(settings.SoundEnabled)
 
 	formCard := formSection(
-		numberField("工作时长（分钟）", "范围 1-180，建议 20-60", workEntry, workMinutesMin, workMinutesMax),
-		numberField("短休时长（分钟）", "范围 1-60，建议 3-10", shortBreakEntry, shortBreakMin, shortBreakMax),
-		numberField("长休时长（分钟）", "范围 1-120，建议 10-30", longBreakEntry, longBreakMin, longBreakMax),
-		numberField("长休触发周期", "范围 1-12，建议 4", intervalEntry, breakIntervalMin, breakIntervalMax),
+		numberField(Tr("settings.work_minutes"), Tr("settings.work_hint"), workEntry, workMinutesMin, workMinutesMax),
+		numberField(Tr("settings.short_break_minutes"), Tr("settings.short_hint"), shortBreakEntry, shortBreakMin, shortBreakMax),
+		numberField(Tr("settings.long_break_minutes"), Tr("settings.long_hint"), longBreakEntry, longBreakMin, longBreakMax),
+		numberField(Tr("settings.long_break_interval"), Tr("settings.interval_hint"), intervalEntry, breakIntervalMin, breakIntervalMax),
 		container.NewPadded(autoStart),
 		container.NewPadded(soundEnabled),
 	)
 
 	content := centeredDialogContent(dialogWidth-40, formCard)
 
-	confirm := dialog.NewCustomConfirm("设置", "保存", "取消", content, func(ok bool) {
+	confirm := dialog.NewCustomConfirm(Tr("settings"), Tr("save"), Tr("cancel"), content, func(ok bool) {
 		if !ok {
 			return
 		}
 		if err := validateEntries(
 			map[string]*widget.Entry{
-				"工作时长": workEntry,
-				"短休时长": shortBreakEntry,
-				"长休时长": longBreakEntry,
-				"长休周期": intervalEntry,
+				Tr("settings.work_minutes"):        workEntry,
+				Tr("settings.short_break_minutes"): shortBreakEntry,
+				Tr("settings.long_break_minutes"):  longBreakEntry,
+				Tr("settings.long_break_interval"): intervalEntry,
 			},
 		); err != nil {
 			dialog.ShowError(err, win)
@@ -74,6 +74,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 			intervalEntry.Text,
 			autoStart.Checked,
 			soundEnabled.Checked,
+			settings.Language,
 		)
 		if err != nil {
 			dialog.ShowError(err, win)
@@ -127,22 +128,22 @@ func styledEntry(value string, min, max int) *widget.Entry {
 	return entry
 }
 
-func parseSettings(work, shortBreak, longBreak, interval string, autoStart, soundEnabled bool) (model.Settings, error) {
+func parseSettings(work, shortBreak, longBreak, interval string, autoStart, soundEnabled bool, language string) (model.Settings, error) {
 	workMinutes, err := intInRange(work, workMinutesMin, workMinutesMax)
 	if err != nil {
-		return model.Settings{}, fmt.Errorf("工作时长无效: %w", err)
+		return model.Settings{}, fmt.Errorf("%s: %w", Tr("settings.work_minutes"), err)
 	}
 	shortBreakMinutes, err := intInRange(shortBreak, shortBreakMin, shortBreakMax)
 	if err != nil {
-		return model.Settings{}, fmt.Errorf("短休时长无效: %w", err)
+		return model.Settings{}, fmt.Errorf("%s: %w", Tr("settings.short_break_minutes"), err)
 	}
 	longBreakMinutes, err := intInRange(longBreak, longBreakMin, longBreakMax)
 	if err != nil {
-		return model.Settings{}, fmt.Errorf("长休时长无效: %w", err)
+		return model.Settings{}, fmt.Errorf("%s: %w", Tr("settings.long_break_minutes"), err)
 	}
 	longBreakInterval, err := intInRange(interval, breakIntervalMin, breakIntervalMax)
 	if err != nil {
-		return model.Settings{}, fmt.Errorf("长休周期无效: %w", err)
+		return model.Settings{}, fmt.Errorf("%s: %w", Tr("settings.long_break_interval"), err)
 	}
 
 	return model.Settings{
@@ -152,16 +153,17 @@ func parseSettings(work, shortBreak, longBreak, interval string, autoStart, soun
 		LongBreakInterval:  longBreakInterval,
 		AutoStartNextPhase: autoStart,
 		SoundEnabled:       soundEnabled,
+		Language:           language,
 	}, nil
 }
 
 func intInRange(value string, min, max int) (int, error) {
 	parsed, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("请输入整数（%d-%d）", min, max)
+		return 0, fmt.Errorf("invalid integer (%d-%d)", min, max)
 	}
 	if parsed < min || parsed > max {
-		return 0, fmt.Errorf("请输入 %d-%d 之间的整数", min, max)
+		return 0, fmt.Errorf("value must be between %d and %d", min, max)
 	}
 	return parsed, nil
 }
