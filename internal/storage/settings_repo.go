@@ -40,6 +40,8 @@ func (r *SettingsRepository) Load() (model.Settings, error) {
 			settings.LongBreakInterval, _ = strconv.Atoi(value)
 		case "auto_start_next_phase":
 			settings.AutoStartNextPhase = value == "1"
+		case "theme":
+			settings.Theme = value
 		}
 	}
 
@@ -53,6 +55,7 @@ func (r *SettingsRepository) Save(settings model.Settings) error {
 		"long_break_minutes":    strconv.Itoa(settings.LongBreakMinutes),
 		"long_break_interval":   strconv.Itoa(settings.LongBreakInterval),
 		"auto_start_next_phase": boolToString(settings.AutoStartNextPhase),
+		"theme":                 settings.Theme,
 	}
 
 	tx, err := r.db.Begin()

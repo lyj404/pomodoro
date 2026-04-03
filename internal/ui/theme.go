@@ -9,8 +9,14 @@ import (
 
 type FocusTheme struct{}
 
+type LightTheme struct{}
+
 func NewFocusTheme() fyne.Theme {
 	return &FocusTheme{}
+}
+
+func NewLightTheme() fyne.Theme {
+	return &LightTheme{}
 }
 
 func (t *FocusTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
@@ -57,6 +63,50 @@ func (t *FocusTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 	return theme.DefaultTheme().Color(name, variant)
 }
 
+func (t *LightTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) color.Color {
+	switch name {
+	case theme.ColorNameBackground:
+		return lightBackground
+	case theme.ColorNameButton:
+		return lightPanelAlt
+	case theme.ColorNameDisabledButton:
+		return lightPanelMuted
+	case theme.ColorNameDisabled:
+		return lightPanelMuted
+	case theme.ColorNameForeground:
+		return lightText
+	case theme.ColorNamePrimary:
+		return lightHighlight
+	case theme.ColorNameInputBackground:
+		return lightPanel
+	case theme.ColorNamePlaceHolder:
+		return lightSubtext
+	case theme.ColorNameHover:
+		return lightPanelMuted
+	case theme.ColorNameFocus:
+		return lightHighlight
+	case theme.ColorNameSelection:
+		return lightPanelAlt
+	case theme.ColorNameScrollBar:
+		return lightPanelMuted
+	case theme.ColorNameShadow:
+		return lightBackground
+	case theme.ColorNameOverlayBackground:
+		return &color.NRGBA{R: 216, G: 222, B: 233, A: 245}
+	case theme.ColorNameMenuBackground:
+		return lightPanel
+	case theme.ColorNameInputBorder:
+		return lightText
+	case theme.ColorNameSeparator:
+		return lightSubtext
+	case theme.ColorNamePressed:
+		return lightHighlight
+	case theme.ColorNameHyperlink:
+		return lightHighlight
+	}
+	return theme.DefaultTheme().Color(name, variant)
+}
+
 func (t *FocusTheme) Font(style fyne.TextStyle) fyne.Resource {
 	return theme.DefaultTheme().Font(style)
 }
@@ -66,6 +116,32 @@ func (t *FocusTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
 }
 
 func (t *FocusTheme) Size(name fyne.ThemeSizeName) float32 {
+	switch name {
+	case theme.SizeNameInlineIcon:
+		return 20
+	case theme.SizeNameInnerPadding:
+		return 10
+	case theme.SizeNamePadding:
+		return 14
+	case theme.SizeNameScrollBar:
+		return 12
+	case theme.SizeNameInputBorder:
+		return 1.5
+	case theme.SizeNameText:
+		return 15
+	}
+	return theme.DefaultTheme().Size(name)
+}
+
+func (t *LightTheme) Font(style fyne.TextStyle) fyne.Resource {
+	return theme.DefaultTheme().Font(style)
+}
+
+func (t *LightTheme) Icon(name fyne.ThemeIconName) fyne.Resource {
+	return theme.DefaultTheme().Icon(name)
+}
+
+func (t *LightTheme) Size(name fyne.ThemeSizeName) float32 {
 	switch name {
 	case theme.SizeNameInlineIcon:
 		return 20

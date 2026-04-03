@@ -13,15 +13,15 @@ func dialogHeader(titleText string, subtitleText string, accent color.Color) fyn
 	bar := canvas.NewRectangle(accent)
 	bar.SetMinSize(fyne.NewSize(8, 40))
 
-	title := canvas.NewText(titleText, nordText)
+	title := canvas.NewText(titleText, secondaryTextColor)
 	title.TextSize = 18
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText(subtitleText, nordSubtext)
+	subtitle := canvas.NewText(subtitleText, mutedTextColor)
 	subtitle.TextSize = 13
 
 	body := container.NewVBox(title, subtitle)
-	card := canvas.NewRectangle(nordPanel)
+	card := canvas.NewRectangle(cardBackgroundColor)
 	card.CornerRadius = 20
 
 	return container.NewStack(
@@ -34,15 +34,15 @@ func mainHeader(titleText string, subtitleText string, trailing fyne.CanvasObjec
 	bar := canvas.NewRectangle(accent)
 	bar.SetMinSize(fyne.NewSize(10, 72))
 
-	title := canvas.NewText(titleText, nordText)
+	title := canvas.NewText(titleText, secondaryTextColor)
 	title.TextSize = 26
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText(subtitleText, nordSubtext)
+	subtitle := canvas.NewText(subtitleText, mutedTextColor)
 	subtitle.TextSize = 13
 
 	body := container.NewBorder(nil, nil, nil, trailing, container.NewVBox(title, subtitle))
-	card := canvas.NewRectangle(nordPanel)
+	card := canvas.NewRectangle(cardBackgroundColor)
 	card.CornerRadius = 22
 
 	return container.NewStack(

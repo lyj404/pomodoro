@@ -7,6 +7,7 @@ type Settings struct {
 	LongBreakInterval  int
 	AutoStartNextPhase bool
 	SoundEnabled       bool
+	Theme              string
 	WindowWidth        float32
 	WindowHeight       float32
 }
@@ -19,6 +20,7 @@ func DefaultSettings() Settings {
 		LongBreakInterval:  4,
 		AutoStartNextPhase: false,
 		SoundEnabled:       true,
+		Theme:              "dark",
 		WindowWidth:        420,
 		WindowHeight:       760,
 	}

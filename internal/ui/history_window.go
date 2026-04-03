@@ -46,7 +46,7 @@ func ShowHistoryDialog(
 	scrollWidth := contentWidth
 	compactRows := dialogWidth < 480
 
-	selectedCount := canvas.NewText("已选: 0 条", nordText)
+	selectedCount := canvas.NewText("已选: 0 条", secondaryTextColor)
 	selectedCount.TextSize = 14
 
 	listHost := container.NewMax()
@@ -55,7 +55,7 @@ func ShowHistoryDialog(
 	var refreshList func(current []model.Session)
 	var loadPage func(offset int)
 
-	pageInfo := canvas.NewText("", nordText)
+	pageInfo := canvas.NewText("", secondaryTextColor)
 	pageInfo.TextSize = 13
 
 	prevBtn := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), nil)
@@ -87,6 +87,11 @@ func ShowHistoryDialog(
 		allSelected := len(current) > 0 && len(selectedInView) == len(current)
 		syncingSelectAll = true
 		selectAllCheck.SetChecked(allSelected)
+		if len(current) == 0 {
+			selectAllCheck.Disable()
+		} else {
+			selectAllCheck.Enable()
+		}
 		syncingSelectAll = false
 
 		currentPage := currentOffset/historyPageSize + 1
@@ -144,7 +149,7 @@ func ShowHistoryDialog(
 		}
 	}
 
-	deleteSelectedBtn := NewActionTile("删除选中", nil, nordDanger, nordText, func() {
+	deleteSelectedBtn := NewActionTile("删除选中", nil, nordDanger, secondaryTextColor, func() {
 		ids := selectedIDsInSessions(selected, currentSessions)
 		if len(ids) == 0 {
 			dialog.ShowInformation("提示", "请先选择当前筛选结果中的记录。", win)
@@ -200,6 +205,7 @@ func ShowHistoryDialog(
 	content := container.NewPadded(listCard)
 	historyDialog := dialog.NewCustom("历史记录", "关闭", content, win)
 	historyDialog.Resize(fyne.NewSize(400, 520)) // 稍微增加高度以容纳空状态
+	refreshList(sessions)
 	historyDialog.Show()
 }
 
@@ -242,13 +248,13 @@ func historyRow(
 
 	metaText := canvas.NewText(
 		fmt.Sprintf("开始: %s", session.StartedAt.Format("2006-01-02 15:04")),
-		nordText,
+		secondaryTextColor,
 	)
 	metaText.TextSize = 13
 
-	plannedText := canvas.NewText(fmt.Sprintf("计划: %s", formatClock(session.PlannedSeconds)), nordText)
+	plannedText := canvas.NewText(fmt.Sprintf("计划: %s", formatClock(session.PlannedSeconds)), secondaryTextColor)
 	plannedText.TextSize = 13
-	actualText := canvas.NewText(fmt.Sprintf("实际: %s", formatClock(session.ActualSeconds)), nordText)
+	actualText := canvas.NewText(fmt.Sprintf("实际: %s", formatClock(session.ActualSeconds)), secondaryTextColor)
 	actualText.TextSize = 13
 
 	check := widget.NewCheck("", func(checked bool) {
@@ -296,12 +302,12 @@ func emptyHistoryCard() fyne.CanvasObject {
 	card := canvas.NewRectangle(cardBackgroundColor)
 	card.CornerRadius = 20
 
-	title := canvas.NewText("暂无记录", nordText)
+	title := canvas.NewText("暂无记录", secondaryTextColor)
 	title.TextSize = 22
 	title.Alignment = fyne.TextAlignCenter
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText("开始一次专注后，这里会自动出现历史记录。", nordText)
+	subtitle := canvas.NewText("开始一次专注后，这里会自动出现历史记录。", secondaryTextColor)
 	subtitle.TextSize = 14
 	subtitle.Alignment = fyne.TextAlignCenter
 
@@ -329,7 +335,7 @@ func selectedIDsInSessions(selected map[int64]bool, sessions []model.Session) []
 func labeledFilter(label string, filter *widget.Select) fyne.CanvasObject {
 	filter.Resize(fyne.NewSize(100, 30))
 	return container.NewHBox(
-		canvas.NewText(label, nordText),
+		canvas.NewText(label, secondaryTextColor),
 		layout.NewSpacer(),
 		filter,
 	)
@@ -398,7 +404,7 @@ func historyBorderColor(selected bool, mode model.SessionMode) color.Color {
 	if selected {
 		return accentColorForMode(mode)
 	}
-	return nordSubtext
+	return mutedTextColor
 }
 
 func clampFloat32(value, min, max float32) float32 {

@@ -27,7 +27,7 @@ const (
 
 func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(model.Settings)) {
 	dialogWidth := float32(400)
-	dialogHeight := float32(480)
+	dialogHeight := float32(460)
 
 	workEntry := styledEntry(strconv.Itoa(settings.WorkMinutes), workMinutesMin, workMinutesMax)
 	shortBreakEntry := styledEntry(strconv.Itoa(settings.ShortBreakMinutes), shortBreakMin, shortBreakMax)
@@ -93,10 +93,10 @@ func formSection(children ...fyne.CanvasObject) fyne.CanvasObject {
 }
 
 func numberField(label, hint string, entry *widget.Entry, min, max int) fyne.CanvasObject {
-	labelText := canvas.NewText(label, nordText)
+	labelText := canvas.NewText(label, secondaryTextColor)
 	labelText.TextSize = 14
 
-	hintText := canvas.NewText(hint, nordSubtext)
+	hintText := canvas.NewText(hint, mutedTextColor)
 	hintText.TextSize = 11
 
 	stepDown := widget.NewButtonWithIcon("", theme.ContentRemoveIcon(), func() {

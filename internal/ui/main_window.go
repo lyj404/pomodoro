@@ -35,6 +35,7 @@ type MainView struct {
 	skipBtn            *ActionTile
 	settingsBtn        *widget.Button
 	historyBtn         *widget.Button
+	themeBtn           *widget.Button
 	rootContent        *fyne.Container
 	scroll             *container.Scroll
 	layoutTier         layoutTier
@@ -61,6 +62,42 @@ type MainCallbacks struct {
 	OnSkip         func()
 	OnOpenSettings func()
 	OnOpenHistory  func()
+	OnToggleTheme  func()
+}
+
+func (v *MainView) RefreshColors() {
+	v.background.FillColor = appBackgroundColor
+	v.background.Refresh()
+
+	v.timerCard.FillColor = cardBackgroundColor
+	v.timerCard.Refresh()
+
+	v.timeLabel.Color = secondaryTextColor
+	v.timeLabel.Refresh()
+	v.statusLabel.Color = secondaryTextColor
+	v.statusLabel.Refresh()
+	v.phaseHintLabel.Color = mutedTextColor
+	v.phaseHintLabel.Refresh()
+	v.focusCountValue.Color = secondaryTextColor
+	v.focusCountValue.Refresh()
+	v.focusDurationValue.Color = secondaryTextColor
+	v.focusDurationValue.Refresh()
+	v.streakValue.Color = secondaryTextColor
+	v.streakValue.Refresh()
+
+	v.startBtn.RefreshColors(primaryButtonColor, primaryButtonTextColor)
+	v.pauseBtn.RefreshColors(pauseButtonColor, pauseButtonTextColor)
+	v.resetBtn.RefreshColors(secondaryButtonColor, secondaryTextColor)
+	v.skipBtn.RefreshColors(secondaryButtonColor, secondaryTextColor)
+
+	v.themeBtn.SetIcon(ThemeToggleIcon())
+	v.themeBtn.Refresh()
+
+	v.settingsBtn.Refresh()
+	v.historyBtn.Refresh()
+
+	v.layoutTier = layoutTierUnknown
+	v.ensureLayout(v.window.Canvas().Size().Width)
 }
 
 func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
@@ -70,12 +107,12 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 		accentBar:          canvas.NewRectangle(workAccentColor),
 		timerCard:          canvas.NewRectangle(cardBackgroundColor),
 		modeLabel:          canvas.NewText("工作中", workAccentColor),
-		timeLabel:          canvas.NewText("25:00", nordText),
-		statusLabel:        canvas.NewText("待开始", nordText),
-		phaseHintLabel:     canvas.NewText("准备进入一段专注时刻", nordText),
-		focusCountValue:    canvas.NewText("0", nordText),
-		focusDurationValue: canvas.NewText("00:00", nordText),
-		streakValue:        canvas.NewText("0", nordText),
+		timeLabel:          canvas.NewText("25:00", secondaryTextColor),
+		statusLabel:        canvas.NewText("待开始", secondaryTextColor),
+		phaseHintLabel:     canvas.NewText("准备进入一段专注时刻", mutedTextColor),
+		focusCountValue:    canvas.NewText("0", secondaryTextColor),
+		focusDurationValue: canvas.NewText("00:00", secondaryTextColor),
+		streakValue:        canvas.NewText("0", secondaryTextColor),
 		layoutTier:         layoutTierUnknown,
 		firstRender:        true,
 		callbacks:          callbacks,
@@ -115,12 +152,15 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 	view.settingsBtn.Importance = widget.LowImportance
 	view.historyBtn = widget.NewButtonWithIcon("", theme.HistoryIcon(), callbacks.OnOpenHistory)
 	view.historyBtn.Importance = widget.LowImportance
+	view.themeBtn = widget.NewButtonWithIcon("", ThemeToggleIcon(), callbacks.OnToggleTheme)
+	view.themeBtn.Importance = widget.LowImportance
 
 	view.rootContent = container.NewVBox()
 	view.scroll = container.NewVScroll(container.NewPadded(view.rootContent))
 
 	toolbar := container.NewHBox(
 		layout.NewSpacer(),
+		view.themeBtn,
 		view.settingsBtn,
 		view.historyBtn,
 	)
@@ -289,7 +329,7 @@ func layoutTierForWidth(width float32) layoutTier {
 
 func (v *MainView) ShowPhaseFinished(snapshot timer.Snapshot) {
 	header := dialogHeader("阶段完成", fmt.Sprintf("%s 已结束", LocalModeLabel(snapshot.Mode)), accentColorForMode(snapshot.Mode))
-	bodyText := canvas.NewText("你可以稍作调整，然后继续下一阶段。", nordSubtext)
+	bodyText := canvas.NewText("你可以稍作调整，然后继续下一阶段。", mutedTextColor)
 	bodyText.TextSize = 13
 
 	content := container.NewPadded(container.NewVBox(
@@ -311,11 +351,11 @@ func statCard(title string, value *canvas.Text, hint string) fyne.CanvasObject {
 	card := canvas.NewRectangle(cardBackgroundColor)
 	card.CornerRadius = 20
 
-	titleText := canvas.NewText(title, nordSubtext)
+	titleText := canvas.NewText(title, mutedTextColor)
 	titleText.TextSize = 11
 	titleText.Alignment = fyne.TextAlignCenter
 
-	hintText := canvas.NewText(hint, nordSubtext)
+	hintText := canvas.NewText(hint, mutedTextColor)
 	hintText.TextSize = 9
 	hintText.Alignment = fyne.TextAlignCenter
 

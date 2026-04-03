@@ -37,6 +37,12 @@ func (t *ActionTile) SetDisabled(disabled bool) {
 	t.Refresh()
 }
 
+func (t *ActionTile) RefreshColors(bgColor, textColor color.Color) {
+	t.bgColor = bgColor
+	t.textColor = textColor
+	t.Refresh()
+}
+
 func (t *ActionTile) Tapped(*fyne.PointEvent) {
 	if t.disabled || t.tapped == nil {
 		return

@@ -43,7 +43,12 @@ func Run() error {
 	}
 
 	fyneApp := app.NewWithID("pomodoro.desktop")
-	fyneApp.Settings().SetTheme(ui.NewFocusTheme())
+	ui.ApplyTheme(settings.Theme)
+	if settings.Theme == "light" {
+		fyneApp.Settings().SetTheme(ui.NewLightTheme())
+	} else {
+		fyneApp.Settings().SetTheme(ui.NewFocusTheme())
+	}
 	fyneApp.SetIcon(ui.AppIcon())
 	win := fyneApp.NewWindow("Pomodoro")
 	win.SetIcon(ui.AppIcon())
@@ -176,6 +181,13 @@ func Run() error {
 					view.ShowError(err)
 					return
 				}
+				ui.ApplyTheme(nextSettings.Theme)
+				if nextSettings.Theme == "light" {
+					fyneApp.Settings().SetTheme(ui.NewLightTheme())
+				} else {
+					fyneApp.Settings().SetTheme(ui.NewFocusTheme())
+				}
+				view.RefreshColors()
 				renderSnapshot()
 			})
 		},
@@ -200,6 +212,30 @@ func Run() error {
 				reloadStatsAndRender()
 				total, _ = statsService.CountTotalSessions()
 			})
+		},
+		OnToggleTheme: func() {
+			current, err := settingsRepo.Load()
+			if err != nil {
+				view.ShowError(err)
+				return
+			}
+			newTheme := "dark"
+			if current.Theme == "dark" {
+				newTheme = "light"
+			}
+			current.Theme = newTheme
+			if err := pomodoroService.UpdateSettings(current); err != nil {
+				view.ShowError(err)
+				return
+			}
+			ui.ApplyTheme(newTheme)
+			if newTheme == "light" {
+				fyneApp.Settings().SetTheme(ui.NewLightTheme())
+			} else {
+				fyneApp.Settings().SetTheme(ui.NewFocusTheme())
+			}
+			view.RefreshColors()
+			renderSnapshot()
 		},
 	})
 
