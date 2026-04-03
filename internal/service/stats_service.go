@@ -23,6 +23,22 @@ func (s *StatsService) RecentSessions(limit int) ([]model.Session, error) {
 	return s.sessionRepo.ListRecent(limit)
 }
 
+func (s *StatsService) RecentSessionsPaginated(offset, limit int) ([]model.Session, int, error) {
+	sessions, err := s.sessionRepo.ListRecentPaginated(offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.sessionRepo.CountTotal()
+	if err != nil {
+		return nil, 0, err
+	}
+	return sessions, total, nil
+}
+
+func (s *StatsService) CountTotalSessions() (int, error) {
+	return s.sessionRepo.CountTotal()
+}
+
 func (s *StatsService) DeleteSession(id int64) error {
 	return s.sessionRepo.DeleteByID(id)
 }

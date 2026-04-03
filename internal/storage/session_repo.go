@@ -36,12 +36,16 @@ func (r *SessionRepository) Create(session model.Session) error {
 }
 
 func (r *SessionRepository) ListRecent(limit int) ([]model.Session, error) {
+	return r.ListRecentPaginated(0, limit)
+}
+
+func (r *SessionRepository) ListRecentPaginated(offset, limit int) ([]model.Session, error) {
 	rows, err := r.db.Query(`
 		SELECT id, mode, planned_seconds, actual_seconds, started_at, ended_at, completed
 		FROM sessions
 		ORDER BY started_at DESC
-		LIMIT ?
-	`, limit)
+		LIMIT ? OFFSET ?
+	`, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -66,6 +70,12 @@ func (r *SessionRepository) ListRecent(limit int) ([]model.Session, error) {
 	}
 
 	return sessions, rows.Err()
+}
+
+func (r *SessionRepository) CountTotal() (int, error) {
+	var count int
+	err := r.db.QueryRow(`SELECT COUNT(*) FROM sessions`).Scan(&count)
+	return count, err
 }
 
 func (r *SessionRepository) DeleteByID(id int64) error {

@@ -9,6 +9,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/lyj404/pomodoro/internal/model"
@@ -23,33 +24,45 @@ const (
 	historyStatusAll        = "全部状态"
 	historyStatusCompleted  = "已完成"
 	historyStatusIncomplete = "未完成"
+
+	historyPageSize = 20
 )
 
 func ShowHistoryDialog(
 	win fyne.Window,
 	sessions []model.Session,
+	totalCount int,
 	onDeleteMany func([]int64) error,
-	onRefresh func() ([]model.Session, error),
+	onRefresh func(offset int) ([]model.Session, int, error),
 	onDeleted func(),
 ) {
 	selected := map[int64]bool{}
-	allSessions := sessions
+	currentOffset := 0
+	total := totalCount
 	windowSize := win.Canvas().Size()
 	dialogWidth := clampFloat32(windowSize.Width-40, 380, 560)
-	dialogHeight := clampFloat32(windowSize.Height-40, 320, 460)
+	dialogHeight := clampFloat32(windowSize.Height-40, 380, 520)
 	contentWidth := clampFloat32(dialogWidth-40, 340, 520)
 	scrollWidth := clampFloat32(dialogWidth-100, 280, 460)
-	scrollHeight := clampFloat32(dialogHeight-220, 160, 260)
+	scrollHeight := clampFloat32(dialogHeight-280, 160, 280)
 	compactRows := dialogWidth < 500
 
-	selectedCount := canvas.NewText("当前筛选已选 0 条", mutedTextColor)
-	selectedCount.TextSize = 13
+	selectedCount := canvas.NewText("当前筛选已选 0 条", nordText)
+	selectedCount.TextSize = 14
 
 	listHost := container.NewMax()
 	var currentSessions []model.Session
 	var syncingSelectAll bool
 	var refreshList func(current []model.Session)
-	var refreshVisibleList func()
+	var loadPage func(offset int)
+
+	pageInfo := canvas.NewText("", nordText)
+	pageInfo.TextSize = 13
+
+	prevBtn := widget.NewButtonWithIcon("", theme.NavigateBackIcon(), nil)
+	prevBtn.Importance = widget.LowImportance
+	nextBtn := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), nil)
+	nextBtn.Importance = widget.LowImportance
 
 	selectAllCheck := widget.NewCheck("全选", func(checked bool) {
 		if syncingSelectAll {
@@ -88,6 +101,26 @@ func ShowHistoryDialog(
 		syncingSelectAll = true
 		selectAllCheck.SetChecked(allSelected)
 		syncingSelectAll = false
+
+		currentPage := currentOffset/historyPageSize + 1
+		totalPages := (total + historyPageSize - 1) / historyPageSize
+		if totalPages == 0 {
+			totalPages = 1
+		}
+		pageInfo.Text = fmt.Sprintf("第 %d/%d 页 (共 %d 条)", currentPage, totalPages, total)
+		pageInfo.Refresh()
+
+		if currentOffset == 0 {
+			prevBtn.Hide()
+		} else {
+			prevBtn.Show()
+		}
+		if currentOffset+len(current) >= total {
+			nextBtn.Hide()
+		} else {
+			nextBtn.Show()
+		}
+
 		listHost.Objects = []fyne.CanvasObject{buildHistoryBody(current, selected, compactRows, func() {
 			selectedInView := selectedIDsInSessions(selected, current)
 			selectedCount.Text = fmt.Sprintf("当前筛选已选 %d 条", len(selectedInView))
@@ -100,14 +133,35 @@ func ShowHistoryDialog(
 		listHost.Refresh()
 	}
 
-	refreshVisibleList = func() {
-		refreshList(filterSessions(allSessions, modeFilter.Selected, statusFilter.Selected))
+	loadPage = func(offset int) {
+		currentOffset = offset
+		selected = map[int64]bool{}
+		sessions, totalCount, err := onRefresh(offset)
+		total = totalCount
+		if err != nil {
+			dialog.ShowError(err, win)
+			return
+		}
+		refreshList(sessions)
 	}
+
 	modeFilter.OnChanged = func(string) {
-		refreshVisibleList()
+		loadPage(0)
 	}
 	statusFilter.OnChanged = func(string) {
-		refreshVisibleList()
+		loadPage(0)
+	}
+
+	prevBtn.OnTapped = func() {
+		if currentOffset > 0 {
+			loadPage(currentOffset - historyPageSize)
+		}
+	}
+
+	nextBtn.OnTapped = func() {
+		if currentOffset+len(currentSessions) < total {
+			loadPage(currentOffset + historyPageSize)
+		}
 	}
 
 	deleteSelectedBtn := NewActionTile("删除选中", nil, nordDanger, nordText, func() {
@@ -130,14 +184,8 @@ func ShowHistoryDialog(
 				delete(selected, id)
 			}
 
-			nextSessions, err := onRefresh()
-			if err != nil {
-				dialog.ShowError(err, win)
-				return
-			}
-			allSessions = nextSessions
-			refreshVisibleList()
 			onDeleted()
+			loadPage(currentOffset)
 		}, win).Show()
 	})
 
@@ -153,15 +201,23 @@ func ShowHistoryDialog(
 		actionControls = container.NewVBox(selectAllCheck, verticalGap(2), deleteSelectedBtn)
 	}
 
+	paginationControls := container.NewHBox(
+		prevBtn,
+		container.NewCenter(pageInfo),
+		nextBtn,
+	)
+
 	toolbar := container.NewVBox(
 		selectedCount,
 		verticalGap(4),
 		filterControls,
 		verticalGap(3),
 		actionControls,
+		verticalGap(3),
+		paginationControls,
 	)
 
-	refreshVisibleList()
+	refreshList(sessions)
 	scroll := container.NewVScroll(container.NewHBox(
 		listHost,
 	))
@@ -209,11 +265,11 @@ func historyRow(
 	border.CornerRadius = 12
 
 	modeText := canvas.NewText(localModeLabel(session.Mode), accentColorForMode(session.Mode))
-	modeText.TextSize = 14
+	modeText.TextSize = 15
 	modeText.TextStyle = fyne.TextStyle{Bold: true}
 
 	statusText := canvas.NewText(sessionStatusText(session.Completed), statusColor(session.Completed))
-	statusText.TextSize = 11
+	statusText.TextSize = 12
 	statusText.TextStyle = fyne.TextStyle{Bold: true}
 
 	metaText := canvas.NewText(
@@ -221,14 +277,14 @@ func historyRow(
 			"开始: %s",
 			session.StartedAt.Format("2006-01-02 15:04"),
 		),
-		nordSubtext,
+		nordText,
 	)
-	metaText.TextSize = 11
+	metaText.TextSize = 13
 
-	plannedText := canvas.NewText(fmt.Sprintf("计划: %s", formatClock(session.PlannedSeconds)), nordSubtext)
-	plannedText.TextSize = 11
-	actualText := canvas.NewText(fmt.Sprintf("实际: %s", formatClock(session.ActualSeconds)), nordSubtext)
-	actualText.TextSize = 11
+	plannedText := canvas.NewText(fmt.Sprintf("计划: %s", formatClock(session.PlannedSeconds)), nordText)
+	plannedText.TextSize = 13
+	actualText := canvas.NewText(fmt.Sprintf("实际: %s", formatClock(session.ActualSeconds)), nordText)
+	actualText.TextSize = 13
 
 	check := widget.NewCheck("", func(checked bool) {
 		if checked {
@@ -268,18 +324,18 @@ func emptyHistoryCard() fyne.CanvasObject {
 	card.CornerRadius = 20
 
 	title := canvas.NewText("暂无记录", nordText)
-	title.TextSize = 20
+	title.TextSize = 22
 	title.Alignment = fyne.TextAlignCenter
 	title.TextStyle = fyne.TextStyle{Bold: true}
 
-	subtitle := canvas.NewText("开始一次专注后，这里会自动出现历史记录。", nordSubtext)
-	subtitle.TextSize = 13
+	subtitle := canvas.NewText("开始一次专注后，这里会自动出现历史记录。", nordText)
+	subtitle.TextSize = 14
 	subtitle.Alignment = fyne.TextAlignCenter
 
 	content := container.NewVBox(
 		layout.NewSpacer(),
 		title,
-		verticalGap(4),
+		verticalGap(8),
 		subtitle,
 		layout.NewSpacer(),
 	)
@@ -298,8 +354,8 @@ func selectedIDsInSessions(selected map[int64]bool, sessions []model.Session) []
 }
 
 func labeledFilter(label string, filter *widget.Select) fyne.CanvasObject {
-	title := canvas.NewText(label, nordSubtext)
-	title.TextSize = 11
+	title := canvas.NewText(label, nordText)
+	title.TextSize = 13
 	return container.NewVBox(title, filter)
 }
 

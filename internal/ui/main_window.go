@@ -38,6 +38,9 @@ type MainView struct {
 	rootContent        *fyne.Container
 	scroll             *container.Scroll
 	layoutTier         layoutTier
+	firstRender        bool
+	prevSnapshot       timer.Snapshot
+	prevTotalSeconds   int
 	callbacks          MainCallbacks
 }
 
@@ -68,40 +71,41 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 		timerCard:          canvas.NewRectangle(cardBackgroundColor),
 		modeLabel:          canvas.NewText("工作中", workAccentColor),
 		timeLabel:          canvas.NewText("25:00", nordText),
-		statusLabel:        canvas.NewText("待开始", nordSubtext),
-		phaseHintLabel:     canvas.NewText("准备进入一段专注时刻", nordSubtext),
+		statusLabel:        canvas.NewText("待开始", nordText),
+		phaseHintLabel:     canvas.NewText("准备进入一段专注时刻", nordText),
 		focusCountValue:    canvas.NewText("0", nordText),
 		focusDurationValue: canvas.NewText("00:00", nordText),
 		streakValue:        canvas.NewText("0", nordText),
 		layoutTier:         layoutTierUnknown,
+		firstRender:        true,
 		callbacks:          callbacks,
 	}
+
+	view.timerCard.CornerRadius = 22
 
 	view.modeLabel.Alignment = fyne.TextAlignCenter
 	view.modeLabel.TextSize = 16
 	view.modeLabel.TextStyle = fyne.TextStyle{Bold: true}
 
 	view.timeLabel.Alignment = fyne.TextAlignCenter
-	view.timeLabel.TextSize = 32
+	view.timeLabel.TextSize = 48
 	view.timeLabel.TextStyle = fyne.TextStyle{Bold: true}
 
 	view.statusLabel.Alignment = fyne.TextAlignCenter
-	view.statusLabel.TextSize = 12
+	view.statusLabel.TextSize = 14
 
 	view.phaseHintLabel.Alignment = fyne.TextAlignCenter
-	view.phaseHintLabel.TextSize = 10
+	view.phaseHintLabel.TextSize = 12
 
-	view.focusCountValue.TextSize = 18
+	view.focusCountValue.TextSize = 24
 	view.focusCountValue.TextStyle = fyne.TextStyle{Bold: true}
 	view.focusCountValue.Alignment = fyne.TextAlignCenter
-	view.focusDurationValue.TextSize = 18
+	view.focusDurationValue.TextSize = 24
 	view.focusDurationValue.TextStyle = fyne.TextStyle{Bold: true}
 	view.focusDurationValue.Alignment = fyne.TextAlignCenter
-	view.streakValue.TextSize = 18
+	view.streakValue.TextSize = 24
 	view.streakValue.TextStyle = fyne.TextStyle{Bold: true}
 	view.streakValue.Alignment = fyne.TextAlignCenter
-
-	view.timerCard.CornerRadius = 22
 
 	view.startBtn = NewActionTile("开始专注", theme.MediaPlayIcon(), primaryButtonColor, primaryButtonTextColor, callbacks.OnStart)
 	view.pauseBtn = NewActionTile("暂停", theme.MediaPauseIcon(), pauseButtonColor, pauseButtonTextColor, callbacks.OnPause)
@@ -136,43 +140,61 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 
 func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
 	accent := accentColorForMode(snapshot.Mode)
-	v.accentBar.FillColor = accent
-	v.modeLabel.Color = accent
-	v.timerCard.FillColor = cardBackgroundColor
-	v.background.FillColor = backgroundForMode(snapshot.Mode)
-	v.modeLabel.Text = localModeLabel(snapshot.Mode)
-	v.timeLabel.Text = formatClock(snapshot.RemainingSeconds)
-	v.statusLabel.Text = localStatusLabel(snapshot.Status)
-	v.phaseHintLabel.Text = phaseHint(snapshot)
-	v.focusCountValue.Text = fmt.Sprintf("%d", stats.CompletedPomodoros)
-	v.focusDurationValue.Text = formatDuration(stats.FocusSeconds)
-	v.streakValue.Text = fmt.Sprintf("%d", snapshot.CompletedPomodoros)
 
-	v.background.Refresh()
-	v.accentBar.Refresh()
-	v.modeLabel.Refresh()
-	v.timeLabel.Refresh()
-	v.statusLabel.Refresh()
-	v.phaseHintLabel.Refresh()
-	v.focusCountValue.Refresh()
-	v.focusDurationValue.Refresh()
-	v.streakValue.Refresh()
-	v.timerCard.Refresh()
+	if snapshot.Mode != v.prevSnapshot.Mode {
+		v.accentBar.FillColor = accent
+		v.modeLabel.Color = accent
+		v.modeLabel.Text = localModeLabel(snapshot.Mode)
+		v.background.FillColor = backgroundForMode(snapshot.Mode)
+		v.background.Refresh()
+		v.accentBar.Refresh()
+		v.modeLabel.Refresh()
+	}
+
+	if snapshot.Status != v.prevSnapshot.Status || snapshot.Mode != v.prevSnapshot.Mode {
+		v.statusLabel.Text = localStatusLabel(snapshot.Status)
+		v.phaseHintLabel.Text = phaseHint(snapshot)
+		v.statusLabel.Refresh()
+		v.phaseHintLabel.Refresh()
+	}
+
+	if snapshot.RemainingSeconds != v.prevSnapshot.RemainingSeconds || snapshot.TotalSeconds != v.prevTotalSeconds {
+		v.timeLabel.Text = formatClock(snapshot.RemainingSeconds)
+		v.timeLabel.Refresh()
+		v.prevTotalSeconds = snapshot.TotalSeconds
+	}
+
+	if stats.CompletedPomodoros != int(v.prevSnapshot.CompletedPomodoros) || v.firstRender {
+		v.focusCountValue.Text = fmt.Sprintf("%d", stats.CompletedPomodoros)
+		v.focusCountValue.Refresh()
+	}
+
+	if stats.FocusSeconds != 0 || v.firstRender {
+		v.focusDurationValue.Text = formatDuration(stats.FocusSeconds)
+		v.focusDurationValue.Refresh()
+	}
+
+	if snapshot.CompletedPomodoros != v.prevSnapshot.CompletedPomodoros || v.firstRender {
+		v.streakValue.Text = fmt.Sprintf("%d", snapshot.CompletedPomodoros)
+		v.streakValue.Refresh()
+	}
 
 	running := snapshot.Status == timer.StatusRunning
-	if running {
-		v.startBtn.SetDisabled(true)
-		v.pauseBtn.SetDisabled(false)
-	} else {
-		v.startBtn.SetDisabled(false)
-		v.pauseBtn.SetDisabled(true)
+	if running != (v.prevSnapshot.Status == timer.StatusRunning) {
+		if running {
+			v.startBtn.SetDisabled(true)
+			v.pauseBtn.SetDisabled(false)
+		} else {
+			v.startBtn.SetDisabled(false)
+			v.pauseBtn.SetDisabled(true)
+		}
+		v.startBtn.Refresh()
+		v.pauseBtn.Refresh()
 	}
 
 	v.ensureLayout(v.window.Canvas().Size().Width)
-	v.startBtn.Refresh()
-	v.pauseBtn.Refresh()
-	v.resetBtn.Refresh()
-	v.skipBtn.Refresh()
+	v.prevSnapshot = snapshot
+	v.firstRender = false
 }
 
 func (v *MainView) ensureLayout(width float32) {

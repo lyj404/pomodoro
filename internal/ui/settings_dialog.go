@@ -34,12 +34,16 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 	autoStart := widget.NewCheck("自动开始下一阶段", nil)
 	autoStart.SetChecked(settings.AutoStartNextPhase)
 
+	soundEnabled := widget.NewCheck("开启声音提醒", nil)
+	soundEnabled.SetChecked(settings.SoundEnabled)
+
 	formCard := formSection(
 		numberField("工作时长（分钟）", "范围 1-180，建议 20-60", workEntry, workMinutesMin, workMinutesMax),
 		numberField("短休时长（分钟）", "范围 1-60，建议 3-10", shortBreakEntry, shortBreakMin, shortBreakMax),
 		numberField("长休时长（分钟）", "范围 1-120，建议 10-30", longBreakEntry, longBreakMin, longBreakMax),
 		numberField("长休触发周期", "范围 1-12，建议 4", intervalEntry, breakIntervalMin, breakIntervalMax),
 		container.NewPadded(autoStart),
+		container.NewPadded(soundEnabled),
 	)
 
 	content := container.NewPadded(centeredDialogContent(380, formCard))
@@ -66,6 +70,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 			longBreakEntry.Text,
 			intervalEntry.Text,
 			autoStart.Checked,
+			soundEnabled.Checked,
 		)
 		if err != nil {
 			dialog.ShowError(err, win)
@@ -74,7 +79,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 
 		onSave(next)
 	}, win)
-	confirm.Resize(fyne.NewSize(460, 390))
+	confirm.Resize(fyne.NewSize(460, 450))
 	confirm.Show()
 }
 
@@ -119,7 +124,7 @@ func styledEntry(value string, min, max int) *widget.Entry {
 	return entry
 }
 
-func parseSettings(work, shortBreak, longBreak, interval string, autoStart bool) (model.Settings, error) {
+func parseSettings(work, shortBreak, longBreak, interval string, autoStart, soundEnabled bool) (model.Settings, error) {
 	workMinutes, err := intInRange(work, workMinutesMin, workMinutesMax)
 	if err != nil {
 		return model.Settings{}, fmt.Errorf("工作时长无效: %w", err)
@@ -143,6 +148,7 @@ func parseSettings(work, shortBreak, longBreak, interval string, autoStart bool)
 		LongBreakMinutes:   longBreakMinutes,
 		LongBreakInterval:  longBreakInterval,
 		AutoStartNextPhase: autoStart,
+		SoundEnabled:       soundEnabled,
 	}, nil
 }
 

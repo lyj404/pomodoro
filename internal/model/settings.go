@@ -6,6 +6,9 @@ type Settings struct {
 	LongBreakMinutes   int
 	LongBreakInterval  int
 	AutoStartNextPhase bool
+	SoundEnabled       bool
+	WindowWidth        float32
+	WindowHeight       float32
 }
 
 func DefaultSettings() Settings {
@@ -15,5 +18,8 @@ func DefaultSettings() Settings {
 		LongBreakMinutes:   15,
 		LongBreakInterval:  4,
 		AutoStartNextPhase: false,
+		SoundEnabled:       true,
+		WindowWidth:        420,
+		WindowHeight:       760,
 	}
 }
