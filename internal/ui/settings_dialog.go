@@ -26,23 +26,8 @@ const (
 )
 
 func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(model.Settings)) {
-	windowSize := win.Canvas().Size()
-
-	dialogWidth := windowSize.Width * 0.6
-	if dialogWidth < 320 {
-		dialogWidth = 320
-	}
-	if dialogWidth > 500 {
-		dialogWidth = 500
-	}
-
-	dialogHeight := windowSize.Height * 0.7
-	if dialogHeight < 350 {
-		dialogHeight = 350
-	}
-	if dialogHeight > 550 {
-		dialogHeight = 550
-	}
+	dialogWidth := float32(400)
+	dialogHeight := float32(480)
 
 	workEntry := styledEntry(strconv.Itoa(settings.WorkMinutes), workMinutesMin, workMinutesMax)
 	shortBreakEntry := styledEntry(strconv.Itoa(settings.ShortBreakMinutes), shortBreakMin, shortBreakMax)
@@ -64,7 +49,7 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 		container.NewPadded(soundEnabled),
 	)
 
-	content := container.NewPadded(centeredDialogContent(dialogWidth-20, formCard))
+	content := centeredDialogContent(dialogWidth-40, formCard)
 
 	confirm := dialog.NewCustomConfirm("设置", "保存", "取消", content, func(ok bool) {
 		if !ok {

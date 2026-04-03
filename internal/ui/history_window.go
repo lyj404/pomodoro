@@ -39,27 +39,11 @@ func ShowHistoryDialog(
 	selected := map[int64]bool{}
 	currentOffset := 0
 	total := totalCount
-	windowSize := win.Canvas().Size()
 
-	dialogWidth := windowSize.Width * 0.8
-	if dialogWidth < 400 {
-		dialogWidth = 400
-	}
-	if dialogWidth > 700 {
-		dialogWidth = 700
-	}
-
-	dialogHeight := windowSize.Height * 0.8
-	if dialogHeight < 350 {
-		dialogHeight = 350
-	}
-	if dialogHeight > 600 {
-		dialogHeight = 600
-	}
+	dialogWidth := float32(400)
 
 	contentWidth := dialogWidth - 40
-	scrollWidth := dialogWidth - 60
-	scrollHeight := dialogHeight - 100
+	scrollWidth := contentWidth
 	compactRows := dialogWidth < 480
 
 	selectedCount := canvas.NewText("已选: 0 条", nordText)
@@ -124,7 +108,7 @@ func ShowHistoryDialog(
 			nextBtn.Show()
 		}
 
-		listHost.Objects = []fyne.CanvasObject{buildHistoryBody(current, selected, compactRows, func() {
+		listHost.Objects = []fyne.CanvasObject{buildHistoryBody(current, selected, compactRows, scrollWidth, func() {
 			selectedInView := selectedIDsInSessions(selected, current)
 			selectedCount.Text = fmt.Sprintf("已选: %d 条", len(selectedInView))
 			selectedCount.Refresh()
@@ -187,47 +171,35 @@ func ShowHistoryDialog(
 
 	paginationRow := container.NewHBox(
 		prevBtn,
-		container.NewCenter(pageInfo),
+		pageInfo,
 		nextBtn,
 	)
 
+	headerRow := container.NewBorder(nil, nil, nil, paginationRow, selectedCount)
+	// 操作行：全选和删除分布两头
 	actionRow := container.NewHBox(
-		layout.NewSpacer(),
 		selectAllCheck,
-		layout.NewSpacer(),
+		layout.NewSpacer(), // 把删除按钮推到最右边
 		deleteSelectedBtn,
-		layout.NewSpacer(),
 	)
-
-	headerRow := container.NewHBox(
-		selectedCount,
-		layout.NewSpacer(),
-		paginationRow,
-	)
-
-	refreshList(sessions)
-	scroll := container.NewVScroll(container.NewHBox(
-		listHost,
-	))
-	scroll.SetMinSize(fyne.NewSize(scrollWidth, scrollHeight))
-
 	toolbar := container.NewVBox(
 		headerRow,
-		verticalGap(2),
+		verticalGap(8),
 		actionRow,
 	)
-
+	// 列表区域
+	scroll := container.NewVScroll(listHost)
+	scroll.SetMinSize(fyne.NewSize(340, 280))
+	// 核心卡片：包含工具栏和滚动列表
 	listCard := formSection(
 		toolbar,
-		verticalGap(2),
+		verticalGap(10),
 		scroll,
-		layout.NewSpacer(),
 	)
-
-	content := container.NewPadded(centeredDialogContent(contentWidth, listCard))
-
+	// 最终包装：不再使用强制 360 宽度的 centeredDialogContent
+	content := container.NewPadded(listCard)
 	historyDialog := dialog.NewCustom("历史记录", "关闭", content, win)
-	historyDialog.Resize(fyne.NewSize(dialogWidth, dialogHeight))
+	historyDialog.Resize(fyne.NewSize(400, 520)) // 稍微增加高度以容纳空状态
 	historyDialog.Show()
 }
 
@@ -235,6 +207,7 @@ func buildHistoryBody(
 	sessions []model.Session,
 	selected map[int64]bool,
 	compact bool,
+	width float32,
 	onSelectionChanged func(),
 ) fyne.CanvasObject {
 	if len(sessions) == 0 {
@@ -246,7 +219,7 @@ func buildHistoryBody(
 		if i > 0 {
 			items = append(items, verticalGap(6))
 		}
-		items = append(items, historyRow(session, selected, compact, onSelectionChanged))
+		items = append(items, historyRow(session, selected, compact, width, onSelectionChanged))
 	}
 	return container.NewVBox(items...)
 }
@@ -255,16 +228,9 @@ func historyRow(
 	session model.Session,
 	selected map[int64]bool,
 	compact bool,
+	rowWidth float32,
 	onSelectionChanged func(),
 ) fyne.CanvasObject {
-	card := canvas.NewRectangle(historyCardColor(selected[session.ID]))
-	card.CornerRadius = 12
-
-	border := canvas.NewRectangle(historyBorderColor(selected[session.ID], session.Mode))
-	border.CornerRadius = 12
-	borderStroke := canvas.NewRectangle(nordBackground)
-	borderStroke.CornerRadius = 12
-
 	modeText := canvas.NewText(localModeLabel(session.Mode), accentColorForMode(session.Mode))
 	modeText.TextSize = 15
 	modeText.TextStyle = fyne.TextStyle{Bold: true}
@@ -272,12 +238,10 @@ func historyRow(
 	statusText := canvas.NewText(sessionStatusText(session.Completed), statusColor(session.Completed))
 	statusText.TextSize = 12
 	statusText.TextStyle = fyne.TextStyle{Bold: true}
+	statusText.Alignment = fyne.TextAlignTrailing
 
 	metaText := canvas.NewText(
-		fmt.Sprintf(
-			"开始: %s",
-			session.StartedAt.Format("2006-01-02 15:04"),
-		),
+		fmt.Sprintf("开始: %s", session.StartedAt.Format("2006-01-02 15:04")),
 		nordText,
 	)
 	metaText.TextSize = 13
@@ -293,10 +257,6 @@ func historyRow(
 		} else {
 			delete(selected, session.ID)
 		}
-		card.FillColor = historyCardColor(checked)
-		border.FillColor = historyBorderColor(checked, session.Mode)
-		card.Refresh()
-		border.Refresh()
 		onSelectionChanged()
 	})
 	check.SetChecked(selected[session.ID])
@@ -310,14 +270,26 @@ func historyRow(
 			container.NewPadded(actualText),
 		)
 	}
-	info := container.NewVBox(
-		modeText,
-		metaText,
-		details,
-	)
-	header := container.NewBorder(nil, nil, container.NewCenter(check), container.NewPadded(statusText), info)
-	borderWrap := container.NewStack(card, container.NewPadded(header))
-	return container.NewPadded(container.NewStack(border, borderWrap))
+
+	info := container.NewVBox(modeText, metaText, details)
+
+	rowBg := canvas.NewRectangle(historyCardColor(selected[session.ID]))
+	rowBg.CornerRadius = 12
+
+	borderBg := canvas.NewRectangle(historyBorderColor(selected[session.ID], session.Mode))
+	borderBg.CornerRadius = 12
+
+	content := container.NewBorder(nil, nil, check, statusText, info)
+
+	rowBg.SetMinSize(fyne.NewSize(rowWidth, 80))
+	borderBg.SetMinSize(fyne.NewSize(rowWidth, 80))
+
+	inner := container.NewStack(rowBg, content)
+	borderWrap := container.NewStack(borderBg, inner)
+
+	borderWrap.Resize(fyne.NewSize(rowWidth, 80))
+
+	return borderWrap
 }
 
 func emptyHistoryCard() fyne.CanvasObject {
