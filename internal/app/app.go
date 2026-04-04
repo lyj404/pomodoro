@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -61,6 +62,34 @@ func Run() error {
 	pomodoroService := service.NewPomodoroService(timerManager, settingsRepo, sessionRepo)
 	statsService := service.NewStatsService(sessionRepo)
 
+	var currentSettings model.Settings
+	var settingsMu sync.Mutex
+	var settingsSaveTimer *time.Timer
+
+	persistSettings := func(s model.Settings) {
+		go func() {
+			if err := settingsRepo.Save(s); err != nil {
+				fmt.Printf("failed to persist settings: %v\n", err)
+			}
+		}()
+	}
+
+	saveSettingsDebounced := func(s model.Settings) {
+		settingsMu.Lock()
+		currentSettings = s
+		if settingsSaveTimer != nil {
+			settingsSaveTimer.Stop()
+		}
+		settingsSaveTimer = time.AfterFunc(500*time.Millisecond, func() {
+			settingsMu.Lock()
+			persistSettings(currentSettings)
+			settingsMu.Unlock()
+		})
+		settingsMu.Unlock()
+	}
+
+	currentSettings = settings
+
 	var currentStats storage.TodayStats
 	var statsLoaded bool
 
@@ -83,6 +112,10 @@ func Run() error {
 		}
 		currentStats = stats
 		statsLoaded = true
+		renderSnapshot()
+	}
+	invalidateStatsAndRender := func() {
+		statsLoaded = false
 		renderSnapshot()
 	}
 
@@ -224,20 +257,15 @@ func Run() error {
 			})
 		},
 		OnToggleTheme: func() {
-			current, err := settingsRepo.Load()
-			if err != nil {
-				view.ShowError(err)
-				return
-			}
+			settingsMu.Lock()
 			newTheme := "dark"
-			if current.Theme == "dark" {
+			if currentSettings.Theme == "dark" {
 				newTheme = "light"
 			}
-			current.Theme = newTheme
-			if err := pomodoroService.UpdateSettings(current); err != nil {
-				view.ShowError(err)
-				return
-			}
+			currentSettings.Theme = newTheme
+			saveSettingsDebounced(currentSettings)
+			settingsMu.Unlock()
+
 			ui.ApplyTheme(newTheme)
 			if newTheme == "light" {
 				fyneApp.Settings().SetTheme(ui.NewLightTheme())
@@ -248,16 +276,11 @@ func Run() error {
 			renderSnapshot()
 		},
 		OnToggleLang: func(lang string) {
-			current, err := settingsRepo.Load()
-			if err != nil {
-				view.ShowError(err)
-				return
-			}
-			current.Language = lang
-			if err := pomodoroService.UpdateSettings(current); err != nil {
-				view.ShowError(err)
-				return
-			}
+			settingsMu.Lock()
+			currentSettings.Language = lang
+			saveSettingsDebounced(currentSettings)
+			settingsMu.Unlock()
+
 			ui.SetLang(lang)
 			view.RefreshText()
 			renderSnapshot()
@@ -296,7 +319,7 @@ func Run() error {
 						content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
 						fyneApp.SendNotification(fyne.NewNotification(title, content))
 						view.ShowPhaseFinished(event.Snapshot)
-						reloadStatsAndRender()
+						invalidateStatsAndRender()
 					}
 				})
 			}

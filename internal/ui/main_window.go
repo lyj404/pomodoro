@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"image/color"
+	"sync"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
@@ -560,18 +561,54 @@ func backgroundForMode(mode model.SessionMode) color.Color {
 	}
 }
 
+var clockBufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, 5)
+		return &buf
+	},
+}
+
 func formatClock(seconds int) string {
 	if seconds < 0 {
 		seconds = 0
 	}
-	return fmt.Sprintf("%02d:%02d", seconds/60, seconds%60)
+	min := seconds / 60
+	sec := seconds % 60
+	bufp := clockBufferPool.Get().(*[]byte)
+	buf := *bufp
+	buf[0] = byte('0' + min/10)
+	buf[1] = byte('0' + min%10)
+	buf[2] = ':'
+	buf[3] = byte('0' + sec/10)
+	buf[4] = byte('0' + sec%10)
+	s := string(buf)
+	clockBufferPool.Put(bufp)
+	return s
+}
+
+var durationBufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, 5)
+		return &buf
+	},
 }
 
 func formatDuration(seconds int) string {
 	if seconds < 0 {
 		seconds = 0
 	}
-	return fmt.Sprintf("%02d:%02d", seconds/3600, (seconds%3600)/60)
+	hour := seconds / 3600
+	min := (seconds % 3600) / 60
+	bufp := durationBufferPool.Get().(*[]byte)
+	buf := *bufp
+	buf[0] = byte('0' + hour/10)
+	buf[1] = byte('0' + hour%10)
+	buf[2] = ':'
+	buf[3] = byte('0' + min/10)
+	buf[4] = byte('0' + min%10)
+	s := string(buf)
+	durationBufferPool.Put(bufp)
+	return s
 }
 
 func colorRGB(r, g, b uint8) color.Color {

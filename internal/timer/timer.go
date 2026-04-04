@@ -30,6 +30,7 @@ type Manager struct {
 	completedPomodoros int
 	ticker             *time.Ticker
 	stopCh             chan struct{}
+	tickerWg           sync.WaitGroup
 	events             chan Event
 }
 
@@ -125,6 +126,7 @@ func (m *Manager) stopTickerLocked() {
 		close(m.stopCh)
 		m.stopCh = nil
 	}
+	m.tickerWg.Wait()
 }
 
 func (m *Manager) startTickerLocked() {
@@ -132,7 +134,9 @@ func (m *Manager) startTickerLocked() {
 	m.ticker = time.NewTicker(time.Second)
 	m.stopCh = make(chan struct{})
 
+	m.tickerWg.Add(1)
 	go func(t *time.Ticker, stopCh chan struct{}) {
+		defer m.tickerWg.Done()
 		for {
 			select {
 			case <-t.C:

@@ -54,6 +54,9 @@ func ShowHistoryDialog(
 	var syncingSelectAll bool
 	var refreshList func(current []model.Session)
 	var loadPage func(offset int)
+	var prefetchedSessions []model.Session
+	var prefetchedTotal int
+	var prefetching bool
 
 	pageInfo := canvas.NewText("", secondaryTextColor)
 	pageInfo.TextSize = 13
@@ -62,6 +65,25 @@ func ShowHistoryDialog(
 	prevBtn.Importance = widget.LowImportance
 	nextBtn := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), nil)
 	nextBtn.Importance = widget.LowImportance
+
+	doPrefetch := func() {
+		if prefetching || len(currentSessions) == 0 {
+			return
+		}
+		nextOffset := currentOffset + historyPageSize
+		if nextOffset >= total {
+			return
+		}
+		prefetching = true
+		go func() {
+			sessions, totalCount, err := onRefresh(nextOffset)
+			if err == nil {
+				prefetchedSessions = sessions
+				prefetchedTotal = totalCount
+			}
+			prefetching = false
+		}()
+	}
 
 	selectAllCheck := widget.NewCheck(Tr("select_all"), func(checked bool) {
 		if syncingSelectAll {
@@ -126,15 +148,25 @@ func ShowHistoryDialog(
 	}
 
 	loadPage = func(offset int) {
-		currentOffset = offset
 		selected = map[int64]bool{}
-		sessions, totalCount, err := onRefresh(offset)
-		total = totalCount
-		if err != nil {
-			dialog.ShowError(err, win)
-			return
+
+		var err error
+		if offset > 0 && prefetchedSessions != nil {
+			sessions = prefetchedSessions
+			totalCount = prefetchedTotal
+			prefetchedSessions = nil
+		} else {
+			sessions, totalCount, err = onRefresh(offset)
+			if err != nil {
+				dialog.ShowError(err, win)
+				return
+			}
 		}
+
+		currentOffset = offset
+		total = totalCount
 		refreshList(sessions)
+		doPrefetch()
 	}
 
 	prevBtn.OnTapped = func() {

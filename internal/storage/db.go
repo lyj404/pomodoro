@@ -17,6 +17,20 @@ func OpenDB(baseDir string) (*sql.DB, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
+	pragmaQueries := []string{
+		`PRAGMA journal_mode=WAL`,
+		`PRAGMA synchronous=NORMAL`,
+		`PRAGMA cache_size=-2000`,
+		`PRAGMA temp_store=MEMORY`,
+		`PRAGMA mmap_size=268435456`,
+	}
+	for _, pragma := range pragmaQueries {
+		if _, err := db.Exec(pragma); err != nil {
+			db.Close()
+			return nil, err
+		}
+	}
+
 	if err := migrate(db); err != nil {
 		db.Close()
 		return nil, err
