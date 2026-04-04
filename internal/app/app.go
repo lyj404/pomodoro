@@ -218,7 +218,7 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			ui.ShowSettingsDialog(win, current, func(nextSettings model.Settings) {
+			ui.ShowSettingsPopup(win.Canvas(), current, func(nextSettings model.Settings) {
 				if err := pomodoroService.UpdateSettings(nextSettings); err != nil {
 					view.ShowError(err)
 					return
@@ -251,7 +251,7 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			ui.ShowHistoryDialog(win, sessions, total, statsService.DeleteSessions, loadSessions, func() {
+			ui.ShowHistoryPopup(win.Canvas(), win, sessions, total, statsService.DeleteSessions, loadSessions, func() {
 				reloadStatsAndRender()
 				total, _ = statsService.CountTotalSessions()
 			})

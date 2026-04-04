@@ -28,7 +28,8 @@ const (
 	historyPageSize = 20
 )
 
-func ShowHistoryDialog(
+func ShowHistoryPopup(
+	canv fyne.Canvas,
 	win fyne.Window,
 	sessions []model.Session,
 	totalCount int,
@@ -65,6 +66,14 @@ func ShowHistoryDialog(
 	prevBtn.Importance = widget.LowImportance
 	nextBtn := widget.NewButtonWithIcon("", theme.NavigateNextIcon(), nil)
 	nextBtn.Importance = widget.LowImportance
+
+	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), nil)
+	closeBtn.Importance = widget.LowImportance
+	closeBtn.OnTapped = func() {
+		if historyPopup != nil {
+			historyPopup.Hide()
+		}
+	}
 
 	doPrefetch := func() {
 		if prefetching || len(currentSessions) == 0 {
@@ -158,7 +167,6 @@ func ShowHistoryDialog(
 		} else {
 			sessions, totalCount, err = onRefresh(offset)
 			if err != nil {
-				dialog.ShowError(err, win)
 				return
 			}
 		}
@@ -184,16 +192,14 @@ func ShowHistoryDialog(
 	deleteSelectedBtn := NewActionTile(Tr("delete_selected"), nil, nordDanger, secondaryTextColor, func() {
 		ids := selectedIDsInSessions(selected, currentSessions)
 		if len(ids) == 0 {
-			dialog.ShowInformation(Tr("notice"), Tr("select_records_hint"), win)
 			return
 		}
 
-		dialog.NewConfirm(Tr("batch_delete"), fmt.Sprintf(Tr("confirm_delete_hint"), len(ids)), func(ok bool) {
+		dialog.ShowConfirm(Tr("batch_delete"), fmt.Sprintf(Tr("confirm_delete_hint"), len(ids)), func(ok bool) {
 			if !ok {
 				return
 			}
 			if err := onDeleteMany(ids); err != nil {
-				dialog.ShowError(err, win)
 				return
 			}
 
@@ -203,8 +209,24 @@ func ShowHistoryDialog(
 
 			onDeleted()
 			loadPage(currentOffset)
-		}, win).Show()
+		}, win)
 	})
+
+	headerTitle := canvas.NewText(Tr("history"), secondaryTextColor)
+	headerTitle.TextSize = 18
+	headerTitle.TextStyle = fyne.TextStyle{Bold: true}
+	headerTitle.Alignment = fyne.TextAlignCenter
+
+	closeRow := container.NewHBox(
+		layout.NewSpacer(),
+		closeBtn,
+	)
+
+	titleRow := container.NewHBox(
+		layout.NewSpacer(),
+		headerTitle,
+		layout.NewSpacer(),
+	)
 
 	paginationRow := container.NewHBox(
 		prevBtn,
@@ -212,34 +234,47 @@ func ShowHistoryDialog(
 		nextBtn,
 	)
 
-	headerRow := container.NewBorder(nil, nil, nil, paginationRow, selectedCount)
-	// 操作行：全选和删除分布两头
 	actionRow := container.NewHBox(
 		selectAllCheck,
-		layout.NewSpacer(), // 把删除按钮推到最右边
+		layout.NewSpacer(),
 		deleteSelectedBtn,
 	)
 	toolbar := container.NewVBox(
-		headerRow,
+		paginationRow,
 		verticalGap(8),
 		actionRow,
 	)
-	// 列表区域
 	scroll := container.NewVScroll(listHost)
-	scroll.SetMinSize(fyne.NewSize(340, 280))
-	// 核心卡片：包含工具栏和滚动列表
-	listCard := formSection(
-		toolbar,
-		verticalGap(10),
-		scroll,
+	scroll.SetMinSize(fyne.NewSize(360, 360))
+
+	mainCard := canvas.NewRectangle(cardBackgroundColor)
+	mainCard.CornerRadius = 20
+
+	content := container.NewStack(
+		mainCard,
+		container.NewVBox(
+			verticalGap(4),
+			closeRow,
+			verticalGap(4),
+			titleRow,
+			verticalGap(8),
+			toolbar,
+			verticalGap(8),
+			scroll,
+			verticalGap(4),
+		),
 	)
-	// 最终包装：不再使用强制 360 宽度的 centeredDialogContent
-	content := container.NewPadded(listCard)
-	historyDialog := dialog.NewCustom(Tr("history"), Tr("close"), content, win)
-	historyDialog.Resize(fyne.NewSize(400, 520)) // 稍微增加高度以容纳空状态
+
+	canvasSize := canv.Size()
+	popupSize := fyne.NewSize(400, 640)
+	historyPopup = widget.NewPopUp(content, canv)
+	historyPopup.Resize(popupSize)
+	historyPopup.Move(fyne.NewPos((canvasSize.Width-popupSize.Width)/2, (canvasSize.Height-popupSize.Height)/2))
 	refreshList(sessions)
-	historyDialog.Show()
+	historyPopup.Show()
 }
+
+var historyPopup *widget.PopUp
 
 func buildHistoryBody(
 	sessions []model.Session,

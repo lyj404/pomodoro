@@ -1,42 +1,46 @@
 # Pomodoro
 
-一个使用 Go + Fyne 开发的桌面番茄钟应用，支持本地 SQLite 数据存储。
+A desktop Pomodoro timer application built with Go and Fyne, with local SQLite storage.
 
-![效果图](/img/img.png)
+![Screenshot](/img/img.png)
 
-## 功能
+[中文](/README_zh.md)
 
-- 番茄钟倒计时
-- 工作 / 短休息 / 长休息切换
-- 开始、暂停、重置、跳过
-- 今日专注统计
-- 历史记录查看与批量删除
-- 系统通知提醒
-- 本地设置持久化
+## Features
 
-## 技术栈
+- Pomodoro countdown timer
+- Work / Short Break / Long Break modes
+- Start, Pause, Reset, Skip controls
+- Today's focus statistics
+- History viewing and batch deletion
+- System notification reminders
+- Local settings persistence
+
+## Tech Stack
 
 - Go
 - Fyne
 - SQLite
 
-## 运行
+## Run
 
 ```bash
 go run ./cmd/pomodoro/main.go
 ```
 
-## 构建
+## Build
 
 ```bash
-# 直接指定路径编译
+# Build with go
 go build -o pomodoro ./cmd/pomodoro/main.go
-# 使用make
+
+# Build with make (smaller binary with -ldflags)
 make build
-# 同时编译Windows和Linux
+
+# Build for all platforms
 make build-all
 ```
 
-## 数据存储
+## Data Storage
 
-应用设置和历史记录默认保存在本地 SQLite 数据库中。
+Application settings and history are stored in a local SQLite database.

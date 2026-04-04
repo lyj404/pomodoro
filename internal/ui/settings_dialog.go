@@ -7,7 +7,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
@@ -25,10 +25,7 @@ const (
 	breakIntervalMax = 12
 )
 
-func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(model.Settings)) {
-	dialogWidth := float32(400)
-	dialogHeight := float32(500)
-
+func ShowSettingsPopup(canv fyne.Canvas, settings model.Settings, onSave func(model.Settings)) {
 	workEntry := styledEntry(strconv.Itoa(settings.WorkMinutes), workMinutesMin, workMinutesMax)
 	shortBreakEntry := styledEntry(strconv.Itoa(settings.ShortBreakMinutes), shortBreakMin, shortBreakMax)
 	longBreakEntry := styledEntry(strconv.Itoa(settings.LongBreakMinutes), longBreakMin, longBreakMax)
@@ -40,21 +37,19 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 	soundEnabled := widget.NewCheck(Tr("settings.sound"), nil)
 	soundEnabled.SetChecked(settings.SoundEnabled)
 
-	formCard := formSection(
-		numberField(Tr("settings.work_minutes"), Tr("settings.work_hint"), workEntry, workMinutesMin, workMinutesMax),
-		numberField(Tr("settings.short_break_minutes"), Tr("settings.short_hint"), shortBreakEntry, shortBreakMin, shortBreakMax),
-		numberField(Tr("settings.long_break_minutes"), Tr("settings.long_hint"), longBreakEntry, longBreakMin, longBreakMax),
-		numberField(Tr("settings.long_break_interval"), Tr("settings.interval_hint"), intervalEntry, breakIntervalMin, breakIntervalMax),
-		container.NewPadded(autoStart),
-		container.NewPadded(soundEnabled),
-	)
+	headerTitle := canvas.NewText(Tr("settings"), secondaryTextColor)
+	headerTitle.TextSize = 18
+	headerTitle.TextStyle = fyne.TextStyle{Bold: true}
+	headerTitle.Alignment = fyne.TextAlignCenter
 
-	content := centeredDialogContent(dialogWidth-40, formCard)
-
-	confirm := dialog.NewCustomConfirm(Tr("settings"), Tr("save"), Tr("cancel"), content, func(ok bool) {
-		if !ok {
-			return
+	closeBtn := widget.NewButtonWithIcon("", theme.CancelIcon(), func() {
+		if settingsPopup != nil {
+			settingsPopup.Hide()
 		}
+	})
+	closeBtn.Importance = widget.LowImportance
+
+	confirmBtn := widget.NewButton(Tr("save"), func() {
 		if err := validateEntries(
 			map[string]*widget.Entry{
 				Tr("settings.work_minutes"):        workEntry,
@@ -63,7 +58,6 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 				Tr("settings.long_break_interval"): intervalEntry,
 			},
 		); err != nil {
-			dialog.ShowError(err, win)
 			return
 		}
 
@@ -77,21 +71,71 @@ func ShowSettingsDialog(win fyne.Window, settings model.Settings, onSave func(mo
 			settings.Language,
 		)
 		if err != nil {
-			dialog.ShowError(err, win)
 			return
 		}
 
 		onSave(next)
-	}, win)
-	confirm.Resize(fyne.NewSize(dialogWidth, dialogHeight))
-	confirm.Show()
+		if settingsPopup != nil {
+			settingsPopup.Hide()
+		}
+	})
+	confirmBtn.Importance = widget.MediumImportance
+
+	cancelBtn := widget.NewButton(Tr("cancel"), func() {
+		if settingsPopup != nil {
+			settingsPopup.Hide()
+		}
+	})
+	cancelBtn.Importance = widget.LowImportance
+
+	btnRow := container.NewHBox(
+		layout.NewSpacer(),
+		cancelBtn,
+		layout.NewSpacer(),
+		confirmBtn,
+		layout.NewSpacer(),
+	)
+
+	formContent := container.NewVBox(
+		numberField(Tr("settings.work_minutes"), Tr("settings.work_hint"), workEntry, workMinutesMin, workMinutesMax),
+		verticalGap(4),
+		numberField(Tr("settings.short_break_minutes"), Tr("settings.short_hint"), shortBreakEntry, shortBreakMin, shortBreakMax),
+		verticalGap(4),
+		numberField(Tr("settings.long_break_minutes"), Tr("settings.long_hint"), longBreakEntry, longBreakMin, longBreakMax),
+		verticalGap(4),
+		numberField(Tr("settings.long_break_interval"), Tr("settings.interval_hint"), intervalEntry, breakIntervalMin, breakIntervalMax),
+		verticalGap(8),
+		autoStart,
+		soundEnabled,
+	)
+
+	headerRow := container.NewBorder(nil, nil, nil, closeBtn, headerTitle)
+
+	formScroll := container.NewVScroll(formContent)
+	formScroll.SetMinSize(fyne.NewSize(320, 600))
+
+	mainCard := canvas.NewRectangle(cardBackgroundColor)
+	mainCard.CornerRadius = 20
+
+	content := container.NewStack(
+		mainCard,
+		container.NewVBox(
+			headerRow,
+			formScroll,
+			layout.NewSpacer(),
+			btnRow,
+		),
+	)
+
+	canvasSize := canv.Size()
+	popupSize := fyne.NewSize(360, 640)
+	settingsPopup = widget.NewPopUp(content, canv)
+	settingsPopup.Resize(popupSize)
+	settingsPopup.Move(fyne.NewPos((canvasSize.Width-popupSize.Width)/2, (canvasSize.Height-popupSize.Height)/2))
+	settingsPopup.Show()
 }
 
-func formSection(children ...fyne.CanvasObject) fyne.CanvasObject {
-	card := canvas.NewRectangle(cardBackgroundColor)
-	card.CornerRadius = 20
-	return container.NewStack(card, container.NewPadded(container.NewVBox(children...)))
-}
+var settingsPopup *widget.PopUp
 
 func numberField(label, hint string, entry *widget.Entry, min, max int) fyne.CanvasObject {
 	labelText := canvas.NewText(label, secondaryTextColor)
