@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -63,32 +62,6 @@ func Run() error {
 	statsService := service.NewStatsService(sessionRepo)
 
 	var currentSettings model.Settings
-	var settingsMu sync.Mutex
-	var settingsSaveTimer *time.Timer
-
-	persistSettings := func(s model.Settings) {
-		go func() {
-			if err := settingsRepo.Save(s); err != nil {
-				fmt.Printf("failed to persist settings: %v\n", err)
-			}
-		}()
-	}
-
-	saveSettingsDebounced := func(s model.Settings) {
-		settingsMu.Lock()
-		currentSettings = s
-		if settingsSaveTimer != nil {
-			settingsSaveTimer.Stop()
-		}
-		settingsSaveTimer = time.AfterFunc(500*time.Millisecond, func() {
-			settingsMu.Lock()
-			persistSettings(currentSettings)
-			settingsMu.Unlock()
-		})
-		settingsMu.Unlock()
-	}
-
-	currentSettings = settings
 
 	var currentStats storage.TodayStats
 	var statsLoaded bool
@@ -203,14 +176,12 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			renderSnapshot()
 		},
 		OnSkip: func() {
 			if err := pomodoroService.Skip(); err != nil {
 				view.ShowError(err)
 				return
 			}
-			renderSnapshot()
 		},
 		OnOpenSettings: func() {
 			current, err := settingsRepo.Load()
@@ -257,14 +228,11 @@ func Run() error {
 			})
 		},
 		OnToggleTheme: func() {
-			settingsMu.Lock()
 			newTheme := "dark"
 			if currentSettings.Theme == "dark" {
 				newTheme = "light"
 			}
 			currentSettings.Theme = newTheme
-			saveSettingsDebounced(currentSettings)
-			settingsMu.Unlock()
 
 			ui.ApplyTheme(newTheme)
 			if newTheme == "light" {
@@ -273,17 +241,11 @@ func Run() error {
 				fyneApp.Settings().SetTheme(ui.NewFocusTheme())
 			}
 			view.RefreshColors()
-			renderSnapshot()
 		},
 		OnToggleLang: func(lang string) {
-			settingsMu.Lock()
 			currentSettings.Language = lang
-			saveSettingsDebounced(currentSettings)
-			settingsMu.Unlock()
-
 			ui.SetLang(lang)
 			view.RefreshText()
-			renderSnapshot()
 		},
 	})
 

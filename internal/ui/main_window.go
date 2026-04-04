@@ -102,9 +102,6 @@ func (v *MainView) RefreshColors() {
 
 	v.settingsBtn.Refresh()
 	v.historyBtn.Refresh()
-
-	v.layoutTier = layoutTierUnknown
-	v.ensureLayout(v.window.Canvas().Size().Width)
 }
 
 func (v *MainView) RefreshText() {
@@ -272,7 +269,11 @@ func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
 		v.pauseBtn.Refresh()
 	}
 
-	v.ensureLayout(v.window.Canvas().Size().Width)
+	currentWidth := v.window.Canvas().Size().Width
+	currentTier := layoutTierForWidth(currentWidth)
+	if currentTier != v.layoutTier || v.firstRender {
+		v.ensureLayout(currentWidth)
+	}
 	v.prevSnapshot = snapshot
 	v.firstRender = false
 }
@@ -551,14 +552,7 @@ func phaseHint(snapshot timer.Snapshot) string {
 }
 
 func backgroundForMode(mode model.SessionMode) color.Color {
-	switch mode {
-	case model.SessionModeShortBreak:
-		return nordPanel
-	case model.SessionModeLongBreak:
-		return nordPanelAlt
-	default:
-		return appBackgroundColor
-	}
+	return appBackgroundColor
 }
 
 var clockBufferPool = sync.Pool{
