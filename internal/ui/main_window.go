@@ -44,6 +44,8 @@ type MainView struct {
 	prevSnapshot       timer.Snapshot
 	prevTotalSeconds   int
 	callbacks          MainCallbacks
+	cachedSpacer       fyne.CanvasObject
+	cachedGaps         [5]fyne.CanvasObject
 }
 
 type layoutTier int
@@ -185,6 +187,15 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 	view.rootContent = container.NewVBox()
 	view.scroll = container.NewVScroll(container.NewPadded(view.rootContent))
 
+	view.cachedSpacer = layout.NewSpacer()
+	view.cachedGaps = [5]fyne.CanvasObject{
+		verticalGap(1),
+		verticalGap(2),
+		verticalGap(3),
+		verticalGap(4),
+		verticalGap(8),
+	}
+
 	toolbar := container.NewHBox(
 		view.historyBtn,
 		layout.NewSpacer(),
@@ -273,15 +284,15 @@ func (v *MainView) ensureLayout(width float32) {
 	v.layoutTier = nextTier
 
 	timerInner := container.NewVBox(
-		layout.NewSpacer(),
+		v.cachedSpacer,
 		v.modeLabel,
-		verticalGap(1),
+		v.cachedGaps[0],
 		v.timeLabel,
-		verticalGap(1),
+		v.cachedGaps[0],
 		v.statusLabel,
-		verticalGap(1),
+		v.cachedGaps[0],
 		v.phaseHintLabel,
-		layout.NewSpacer(),
+		v.cachedSpacer,
 	)
 
 	timerCard := container.NewStack(v.timerCard, container.NewPadded(timerInner))
@@ -305,7 +316,7 @@ func (v *MainView) ensureLayout(width float32) {
 		primaryActions = container.NewGridWithColumns(2, v.startBtn, v.pauseBtn)
 		secondaryActions = actionGroup(v.resetBtn, v.skipBtn)
 		stats = container.NewGridWithColumns(2,
-			container.NewVBox(statsCards[0], verticalGap(4), statsCards[1]),
+			container.NewVBox(statsCards[0], v.cachedGaps[3], statsCards[1]),
 			statsCards[2],
 		)
 	case layoutTierCompact:
@@ -315,28 +326,28 @@ func (v *MainView) ensureLayout(width float32) {
 			statsCards[0],
 			statsCards[1],
 			statsCards[2],
-			verticalGap(1),
+			v.cachedGaps[0],
 		)
 	default:
-		primaryActions = container.NewVBox(v.startBtn, verticalGap(4), v.pauseBtn)
+		primaryActions = container.NewVBox(v.startBtn, v.cachedGaps[3], v.pauseBtn)
 		secondaryActions = actionGroupVertical(v.resetBtn, v.skipBtn)
 		stats = container.NewVBox(
 			statsCards[0],
-			verticalGap(4),
+			v.cachedGaps[3],
 			statsCards[1],
-			verticalGap(4),
+			v.cachedGaps[3],
 			statsCards[2],
 		)
 	}
 
 	v.rootContent.Objects = []fyne.CanvasObject{
-		verticalGap(2),
+		v.cachedGaps[1],
 		timerCard,
-		verticalGap(4),
+		v.cachedGaps[3],
 		primaryActions,
-		verticalGap(2),
+		v.cachedGaps[1],
 		secondaryActions,
-		verticalGap(3),
+		v.cachedGaps[2],
 		stats,
 	}
 	v.rootContent.Refresh()

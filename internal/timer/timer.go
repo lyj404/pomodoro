@@ -154,7 +154,6 @@ func (m *Manager) onTick() {
 
 	if m.remainingSeconds > 0 {
 		m.remainingSeconds--
-		m.emitLocked(EventTick)
 	}
 
 	if m.remainingSeconds > 0 {

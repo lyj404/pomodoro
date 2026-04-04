@@ -51,7 +51,7 @@ func (r *SessionRepository) ListRecentPaginated(offset, limit int) ([]model.Sess
 	}
 	defer rows.Close()
 
-	var sessions []model.Session
+	sessions := make([]model.Session, 0, limit)
 	for rows.Next() {
 		var s model.Session
 		var mode string

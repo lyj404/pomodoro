@@ -22,16 +22,22 @@ var settingsIconLightData = []byte(`<svg xmlns="http://www.w3.org/2000/svg" view
 
 var historyIconLightData = []byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#2E3440" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`)
 
-var settingsResourceDark = fyne.NewStaticResource("settings_dark.svg", settingsIconData)
-var historyResourceDark = fyne.NewStaticResource("history_dark.svg", historyIconData)
-var settingsResourceLight = fyne.NewStaticResource("settings_light.svg", settingsIconLightData)
-var historyResourceLight = fyne.NewStaticResource("history_light.svg", historyIconLightData)
+var (
+	sunIconResource        = fyne.NewStaticResource("sun.svg", sunIconData)
+	moonIconResource       = fyne.NewStaticResource("moon.svg", moonIconData)
+	settingsResourceDark   = fyne.NewStaticResource("settings_dark.svg", settingsIconData)
+	historyResourceDark    = fyne.NewStaticResource("history_dark.svg", historyIconData)
+	settingsResourceLight  = fyne.NewStaticResource("settings_light.svg", settingsIconLightData)
+	historyResourceLight   = fyne.NewStaticResource("history_light.svg", historyIconLightData)
+	globeIconResource      = fyne.NewStaticResource("globe.svg", globeIconData)
+	globeIconLightResource = fyne.NewStaticResource("globe_light.svg", globeIconLightData)
+)
 
 func ThemeToggleIcon() fyne.Resource {
 	if currentTheme == "light" {
-		return fyne.NewStaticResource("moon.svg", moonIconData)
+		return moonIconResource
 	}
-	return fyne.NewStaticResource("sun.svg", sunIconData)
+	return sunIconResource
 }
 
 func SettingsIconResource() fyne.Resource {
@@ -50,14 +56,16 @@ func HistoryIconResource() fyne.Resource {
 
 func LanguageToggleIcon() fyne.Resource {
 	if currentTheme == "light" {
-		return fyne.NewStaticResource("globe_light.svg", globeIconLightData)
+		return globeIconLightResource
 	}
-	return fyne.NewStaticResource("globe.svg", globeIconData)
+	return globeIconResource
 }
 
 //go:embed app-icon.png
 var appIconBytes []byte
 
+var appIconResource = fyne.NewStaticResource("app-icon.png", appIconBytes)
+
 func AppIcon() fyne.Resource {
-	return fyne.NewStaticResource("app-icon.png", appIconBytes)
+	return appIconResource
 }

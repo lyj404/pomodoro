@@ -30,6 +30,7 @@ var (
 	lightBreak      = colorRGB(163, 190, 140) // #A3BE8C
 	lightHighlight  = colorRGB(136, 192, 208) // #88C0D0
 	lightDanger     = colorRGB(191, 97, 106)
+	lightDisabled   = colorRGB(140, 145, 150) // #889296 - 更明显的禁用色
 )
 
 var (
@@ -71,8 +72,8 @@ func ApplyTheme(theme string) {
 		primaryButtonTextColor = lightText
 		pauseButtonColor = lightPanelMuted
 		pauseButtonTextColor = lightText
-		disabledButtonColor = lightPanelMuted
-		disabledButtonTextColor = lightSubtext
+		disabledButtonColor = lightDisabled
+		disabledButtonTextColor = lightPanel
 	} else {
 		appBackgroundColor = nordBackground
 		cardBackgroundColor = nordPanel

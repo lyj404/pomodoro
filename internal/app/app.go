@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -59,13 +60,19 @@ func Run() error {
 	timerManager := timer.NewManager(settings)
 	pomodoroService := service.NewPomodoroService(timerManager, settingsRepo, sessionRepo)
 	statsService := service.NewStatsService(sessionRepo)
-	currentStats, err := statsService.TodayStats()
-	if err != nil {
-		return err
-	}
+
+	var currentStats storage.TodayStats
+	var statsLoaded bool
 
 	var view *ui.MainView
 	renderSnapshot := func() {
+		if !statsLoaded {
+			stats, err := statsService.TodayStats()
+			if err == nil {
+				currentStats = stats
+				statsLoaded = true
+			}
+		}
 		view.Render(timerManager.Snapshot(), currentStats)
 	}
 	reloadStatsAndRender := func() {
@@ -75,6 +82,7 @@ func Run() error {
 			return
 		}
 		currentStats = stats
+		statsLoaded = true
 		renderSnapshot()
 	}
 
@@ -92,13 +100,13 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			reloadStatsAndRender()
+			renderSnapshot()
 		case fyne.KeyS:
 			if err := pomodoroService.Skip(); err != nil {
 				view.ShowError(err)
 				return
 			}
-			reloadStatsAndRender()
+			renderSnapshot()
 		}
 	})
 
@@ -134,7 +142,7 @@ func Run() error {
 						view.ShowError(err)
 						return
 					}
-					reloadStatsAndRender()
+					renderSnapshot()
 				},
 			},
 			{IsSeparator: true},
@@ -162,14 +170,14 @@ func Run() error {
 				view.ShowError(err)
 				return
 			}
-			reloadStatsAndRender()
+			renderSnapshot()
 		},
 		OnSkip: func() {
 			if err := pomodoroService.Skip(); err != nil {
 				view.ShowError(err)
 				return
 			}
-			reloadStatsAndRender()
+			renderSnapshot()
 		},
 		OnOpenSettings: func() {
 			current, err := settingsRepo.Load()
@@ -259,28 +267,39 @@ func Run() error {
 	renderSnapshot()
 
 	settingsCopy := settings
-	go func() {
-		for event := range timerManager.Events() {
-			if err := pomodoroService.HandleTimerEvent(event); err != nil {
-				fyne.Do(func() {
-					view.ShowError(fmt.Errorf("保存会话失败: %w", err))
-				})
-			}
+	uiRefreshTicker := time.NewTicker(time.Second)
+	defer uiRefreshTicker.Stop()
 
-			fyne.Do(func() {
-				if event.Type == timer.EventPhaseFinished {
-					if settingsCopy.SoundEnabled {
-						beeep.Notify("Pomodoro", "阶段完成", "default")
-					}
-					title := "阶段完成"
-					content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
-					fyneApp.SendNotification(fyne.NewNotification(title, content))
-					view.ShowPhaseFinished(event.Snapshot)
-					reloadStatsAndRender()
+	go func() {
+		for {
+			select {
+			case <-uiRefreshTicker.C:
+				fyne.Do(func() {
+					renderSnapshot()
+				})
+			case event, ok := <-timerManager.Events():
+				if !ok {
 					return
 				}
-				renderSnapshot()
-			})
+				if err := pomodoroService.HandleTimerEvent(event); err != nil {
+					fyne.Do(func() {
+						view.ShowError(fmt.Errorf("保存会话失败: %w", err))
+					})
+				}
+
+				fyne.Do(func() {
+					if event.Type == timer.EventPhaseFinished {
+						if settingsCopy.SoundEnabled {
+							beeep.Notify("Pomodoro", "阶段完成", "default")
+						}
+						title := "阶段完成"
+						content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
+						fyneApp.SendNotification(fyne.NewNotification(title, content))
+						view.ShowPhaseFinished(event.Snapshot)
+						reloadStatsAndRender()
+					}
+				})
+			}
 		}
 	}()
 
