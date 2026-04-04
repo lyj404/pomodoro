@@ -47,6 +47,7 @@ type MainView struct {
 	callbacks          MainCallbacks
 	cachedSpacer       fyne.CanvasObject
 	cachedGaps         [5]fyne.CanvasObject
+	refreshing         bool
 }
 
 type layoutTier int
@@ -71,6 +72,12 @@ type MainCallbacks struct {
 }
 
 func (v *MainView) RefreshColors() {
+	if v.refreshing {
+		return
+	}
+	v.refreshing = true
+	defer func() { v.refreshing = false }()
+
 	v.background.FillColor = appBackgroundColor
 	v.background.Refresh()
 
@@ -102,6 +109,9 @@ func (v *MainView) RefreshColors() {
 
 	v.settingsBtn.Refresh()
 	v.historyBtn.Refresh()
+
+	v.layoutTier = layoutTierUnknown
+	v.ensureLayout(v.window.Canvas().Size().Width)
 }
 
 func (v *MainView) RefreshText() {
@@ -216,6 +226,9 @@ func NewMainView(win fyne.Window, callbacks MainCallbacks) *MainView {
 }
 
 func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
+	if v.refreshing {
+		return
+	}
 	accent := accentColorForMode(snapshot.Mode)
 
 	if snapshot.Mode != v.prevSnapshot.Mode {

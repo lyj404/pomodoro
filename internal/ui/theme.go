@@ -26,9 +26,9 @@ func (t *FocusTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 	case theme.ColorNameButton:
 		return nordPanelAlt
 	case theme.ColorNameDisabledButton:
-		return nordPanelMuted
+		return nordDisabled
 	case theme.ColorNameDisabled:
-		return nordPanelMuted
+		return nordDisabled
 	case theme.ColorNameForeground:
 		return nordText
 	case theme.ColorNamePrimary:
@@ -70,9 +70,9 @@ func (t *LightTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 	case theme.ColorNameButton:
 		return lightPanelAlt
 	case theme.ColorNameDisabledButton:
-		return lightPanelMuted
+		return lightDisabled
 	case theme.ColorNameDisabled:
-		return lightPanelMuted
+		return lightDisabled
 	case theme.ColorNameForeground:
 		return lightText
 	case theme.ColorNamePrimary:
