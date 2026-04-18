@@ -17,8 +17,8 @@ var (
 	nordBreak        = colorRGB(163, 190, 140) // #A3BE8C
 	nordHighlight    = colorRGB(136, 192, 208) // #88C0D0
 	nordDanger       = colorRGB(191, 97, 106)
-	nordDisabled     = colorRGB(100, 100, 170)
-	nordDisabledText = colorRGB(100, 110, 120)
+	nordDisabled     = colorRGB(59, 66, 82)   // same as nordPanel for better contrast
+	nordDisabledText = colorRGB(160, 172, 190) // #A0ACBE — readable on dark bg
 )
 
 var (

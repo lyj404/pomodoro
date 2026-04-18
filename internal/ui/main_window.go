@@ -44,6 +44,7 @@ type MainView struct {
 	firstRender        bool
 	prevSnapshot       timer.Snapshot
 	prevTotalSeconds   int
+	prevStats         storage.TodayStats
 	callbacks          MainCallbacks
 	cachedSpacer       fyne.CanvasObject
 	cachedGaps         [5]fyne.CanvasObject
@@ -254,12 +255,12 @@ func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
 		v.prevTotalSeconds = snapshot.TotalSeconds
 	}
 
-	if stats.CompletedPomodoros != int(v.prevSnapshot.CompletedPomodoros) || v.firstRender {
+	if stats.CompletedPomodoros != v.prevStats.CompletedPomodoros || v.firstRender {
 		v.focusCountValue.Text = fmt.Sprintf("%d", stats.CompletedPomodoros)
 		v.focusCountValue.Refresh()
 	}
 
-	if stats.FocusSeconds != 0 || v.firstRender {
+	if stats.FocusSeconds != v.prevStats.FocusSeconds || v.firstRender {
 		v.focusDurationValue.Text = formatDuration(stats.FocusSeconds)
 		v.focusDurationValue.Refresh()
 	}
@@ -288,6 +289,7 @@ func (v *MainView) Render(snapshot timer.Snapshot, stats storage.TodayStats) {
 		v.ensureLayout(currentWidth)
 	}
 	v.prevSnapshot = snapshot
+	v.prevStats = stats
 	v.firstRender = false
 }
 

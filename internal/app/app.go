@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -64,17 +63,9 @@ func Run() error {
 	var currentSettings model.Settings
 
 	var currentStats storage.TodayStats
-	var statsLoaded bool
 
 	var view *ui.MainView
 	renderSnapshot := func() {
-		if !statsLoaded {
-			stats, err := statsService.TodayStats()
-			if err == nil {
-				currentStats = stats
-				statsLoaded = true
-			}
-		}
 		view.Render(timerManager.Snapshot(), currentStats)
 	}
 	reloadStatsAndRender := func() {
@@ -84,11 +75,13 @@ func Run() error {
 			return
 		}
 		currentStats = stats
-		statsLoaded = true
 		renderSnapshot()
 	}
 	invalidateStatsAndRender := func() {
-		statsLoaded = false
+		stats, err := statsService.TodayStats()
+		if err == nil {
+			currentStats = stats
+		}
 		renderSnapshot()
 	}
 
@@ -249,42 +242,38 @@ func Run() error {
 		},
 	})
 
+	// Load initial stats
+	if stats, err := statsService.TodayStats(); err == nil {
+		currentStats = stats
+	}
+
 	renderSnapshot()
 
 	settingsCopy := settings
-	uiRefreshTicker := time.NewTicker(time.Second)
-	defer uiRefreshTicker.Stop()
 
 	go func() {
-		for {
-			select {
-			case <-uiRefreshTicker.C:
+		for event := range timerManager.Events() {
+			if err := pomodoroService.HandleTimerEvent(event); err != nil {
 				fyne.Do(func() {
-					renderSnapshot()
-				})
-			case event, ok := <-timerManager.Events():
-				if !ok {
-					return
-				}
-				if err := pomodoroService.HandleTimerEvent(event); err != nil {
-					fyne.Do(func() {
-						view.ShowError(fmt.Errorf("保存会话失败: %w", err))
-					})
-				}
-
-				fyne.Do(func() {
-					if event.Type == timer.EventPhaseFinished {
-						if settingsCopy.SoundEnabled {
-							beeep.Notify("Pomodoro", "阶段完成", "default")
-						}
-						title := "阶段完成"
-						content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
-						fyneApp.SendNotification(fyne.NewNotification(title, content))
-						view.ShowPhaseFinished(event.Snapshot)
-						invalidateStatsAndRender()
-					}
+					view.ShowError(fmt.Errorf("保存会话失败: %w", err))
 				})
 			}
+
+			fyne.Do(func() {
+				switch event.Type {
+				case timer.EventTick, timer.EventStateChanged:
+					renderSnapshot()
+				case timer.EventPhaseFinished:
+					if settingsCopy.SoundEnabled {
+						beeep.Notify("Pomodoro", "阶段完成", "default")
+					}
+					title := "阶段完成"
+					content := fmt.Sprintf("%s 已结束", ui.LocalModeLabel(event.Snapshot.Mode))
+					fyneApp.SendNotification(fyne.NewNotification(title, content))
+					view.ShowPhaseFinished(event.Snapshot)
+					invalidateStatsAndRender()
+				}
+			})
 		}
 	}()
 
